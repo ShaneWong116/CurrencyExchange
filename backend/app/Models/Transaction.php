@@ -24,6 +24,8 @@ class Transaction extends Model
         'location',
         'notes',
         'status',
+        'settlement_status',
+        'settlement_id',
         'submit_time'
     ];
 
@@ -94,5 +96,45 @@ class Transaction extends Model
     public function scopeByDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('created_at', [$startDate, $endDate]);
+    }
+
+    /**
+     * 关联到结余记录
+     */
+    public function settlement()
+    {
+        return $this->belongsTo(Settlement::class);
+    }
+
+    /**
+     * 是否已结余
+     */
+    public function isSettled()
+    {
+        return $this->settlement_status === 'settled';
+    }
+
+    /**
+     * 是否未结余
+     */
+    public function isUnsettled()
+    {
+        return $this->settlement_status === 'unsettled';
+    }
+
+    /**
+     * 查询未结余的交易
+     */
+    public function scopeUnsettled($query)
+    {
+        return $query->where('settlement_status', 'unsettled');
+    }
+
+    /**
+     * 查询已结余的交易
+     */
+    public function scopeSettled($query)
+    {
+        return $query->where('settlement_status', 'settled');
     }
 }

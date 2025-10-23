@@ -48,6 +48,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // 首页本金
     Route::get('/home/principal', [\App\Http\Controllers\Api\HomeController::class, 'principal']);
 
+    // 结余管理
+    Route::get('/settlements/preview', [\App\Http\Controllers\Api\SettlementController::class, 'preview']);
+    Route::post('/settlements', [\App\Http\Controllers\Api\SettlementController::class, 'store']);
+    Route::get('/settlements', [\App\Http\Controllers\Api\SettlementController::class, 'index']);
+    Route::get('/settlements/{id}', [\App\Http\Controllers\Api\SettlementController::class, 'show']);
+
     
     // 草稿管理
     Route::get('/drafts', [\App\Http\Controllers\Api\DraftController::class, 'index']);
