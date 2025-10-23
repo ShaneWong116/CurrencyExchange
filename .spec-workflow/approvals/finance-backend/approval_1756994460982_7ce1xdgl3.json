@@ -1,0 +1,12 @@
+{
+  "id": "approval_1756994460982_7ce1xdgl3",
+  "title": "请审批：finance-backend 需求文档",
+  "filePath": ".spec-workflow/specs/finance-backend/requirements.md",
+  "type": "document",
+  "status": "rejected",
+  "createdAt": "2025-09-04T14:01:00.982Z",
+  "category": "spec",
+  "categoryName": "finance-backend",
+  "response": "Rejected",
+  "respondedAt": "2025-09-12T09:23:25.484Z"
+}

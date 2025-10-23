@@ -1,0 +1,60 @@
+/* 仅显示文件名：完全隐藏 FilePond 图像/媒体预览与缩略图区域 */
+.filepond--image-preview,
+.filepond--image-preview-wrapper,
+.filepond--file-poster,
+.filepond--file .filepond--file-info-main .filepond--file-info-preview,
+.filepond--item-panel {
+  display: none !important;
+}
+
+/* 保持文件信息栏（名称、大小、操作按钮）可见并整齐排列 */
+.filepond--item .filepond--file {
+  height: auto !important;
+  min-height: 2.25rem;
+}
+
+.filepond--file .filepond--file-info {
+  display: flex;
+  align-items: center;
+}
+
+/* 文件名占据更多空间，避免过度截断 */
+.filepond--file .filepond--file-info .filepond--file-info-main {
+  flex: 1 1 auto;
+}
+
+/* 调整动作按钮层级与位置 */
+.filepond--file-action-button {
+  position: relative;
+  z-index: 2;
+}
+
+/* 仅保留“删除”按钮，隐藏其他所有动作按钮 */
+.filepond--file-action-button:not(.filepond--action-remove-item) {
+  display: none !important;
+}
+
+/* 隐藏大小、进度与状态，仅保留文件名 */
+.filepond--file-info-sub,
+.filepond--file-status,
+.filepond--progress-indicator,
+.filepond--progress-indicator-label,
+.filepond--file-size {
+  display: none !important;
+}
+
+/* 文件名单行省略，空间尽量给文件名 */
+.filepond--file .filepond--file-info {
+  width: 100%;
+}
+
+.filepond--file .filepond--file-info .filepond--file-info-main {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.filepond--file .filepond--file-info .filepond--file-info-main .filepond--file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

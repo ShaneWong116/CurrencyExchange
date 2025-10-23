@@ -1,0 +1,241 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Transaction;
+use App\Models\Channel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+
+class TransactionController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Transaction::with(['channel', 'user'])
+            ->where('user_id', $request->user()->id);
+
+        // 筛选条件
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->has('channel_id')) {
+            $query->where('channel_id', $request->channel_id);
+        }
+
+        if ($request->has('location_id')) {
+            $query->where('location_id', $request->location_id);
+        }
+
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59'
+            ]);
+        }
+
+        // 按交易类型标签筛选
+        if ($request->has('transaction_label')) {
+            $query->where('transaction_label', $request->transaction_label);
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($transactions);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'type' => ['required', Rule::in(['income', 'outcome', 'exchange'])],
+            'rmb_amount' => 'required|numeric|min:0',
+            'hkd_amount' => 'required|numeric|min:0',
+            'exchange_rate' => 'required|numeric|min:0',
+            'instant_rate' => 'nullable|numeric|min:0',
+            'channel_id' => 'required|exists:channels,id',
+            'location_id' => 'nullable|exists:locations,id',
+            'location' => 'nullable|string|max:200',
+            'notes' => 'nullable|string',
+            'uuid' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $user = $request->user();
+            $transaction = Transaction::create([
+                'uuid' => $request->uuid ?: \Illuminate\Support\Str::uuid(),
+                'user_id' => $user->id,
+                'type' => $request->type,
+                'rmb_amount' => $request->rmb_amount,
+                'hkd_amount' => $request->hkd_amount,
+                'exchange_rate' => $request->exchange_rate,
+                'instant_rate' => $request->instant_rate,
+                'channel_id' => $request->channel_id,
+                'location_id' => $request->location_id ?: $user->location_id,
+                'location' => $request->location,
+                'notes' => $request->notes,
+                'status' => 'success',
+                'submit_time' => now(),
+            ]);
+
+            // 更新渠道交易计数
+            $channel = Channel::find($request->channel_id);
+            $channel->incrementTransactionCount();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => '交易记录创建成功',
+                'transaction' => $transaction->load(['channel', 'user'])
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => '创建失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show(Transaction $transaction, Request $request)
+    {
+        // 确保用户只能查看自己的交易
+        if ($transaction->user_id !== $request->user()->id) {
+            return response()->json(['message' => '无权访问'], 403);
+        }
+
+        $transaction->load(['channel', 'user', 'images']);
+        
+        return response()->json($transaction);
+    }
+
+    public function batchStore(Request $request)
+    {
+        $request->validate([
+            'transactions' => 'required|array',
+            'transactions.*.type' => ['required', Rule::in(['income', 'outcome', 'exchange'])],
+            'transactions.*.rmb_amount' => 'required|numeric|min:0',
+            'transactions.*.hkd_amount' => 'required|numeric',
+            'transactions.*.exchange_rate' => 'required|numeric|min:0',
+            'transactions.*.instant_rate' => 'nullable|numeric|min:0',
+            'transactions.*.channel_id' => 'required|exists:channels,id',
+            'transactions.*.location_id' => 'nullable|exists:locations,id',
+            'transactions.*.location' => 'nullable|string|max:200',
+            'transactions.*.notes' => 'nullable|string',
+            'transactions.*.uuid' => 'required|string',
+        ]);
+
+        $results = [];
+        $user = $request->user();
+        $userId = $user->id;
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->transactions as $transactionData) {
+                // 检查UUID是否已存在
+                if (Transaction::where('uuid', $transactionData['uuid'])->exists()) {
+                    $results[] = [
+                        'uuid' => $transactionData['uuid'],
+                        'status' => 'skipped',
+                        'message' => '记录已存在'
+                    ];
+                    continue;
+                }
+
+                $transaction = Transaction::create([
+                    'uuid' => $transactionData['uuid'],
+                    'user_id' => $userId,
+                    'type' => $transactionData['type'],
+                    'rmb_amount' => $transactionData['rmb_amount'],
+                    'hkd_amount' => $transactionData['hkd_amount'],
+                    'exchange_rate' => $transactionData['exchange_rate'],
+                    'instant_rate' => $transactionData['instant_rate'] ?? null,
+                    'channel_id' => $transactionData['channel_id'],
+                    'location_id' => $transactionData['location_id'] ?? $user->location_id,
+                    'location' => $transactionData['location'] ?? null,
+                    'notes' => $transactionData['notes'] ?? null,
+                    'status' => 'success',
+                    'submit_time' => now(),
+                ]);
+
+                // 更新渠道交易计数
+                $channel = Channel::find($transactionData['channel_id']);
+                $channel->incrementTransactionCount();
+
+                $results[] = [
+                    'uuid' => $transactionData['uuid'],
+                    'status' => 'success',
+                    'id' => $transaction->id
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => '批量同步完成',
+                'results' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => '批量同步失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 交易统计：今日统计与Top3
+     */
+    public function statistics(Request $request)
+    {
+        $date = $request->query('date', now()->toDateString());
+
+        $todayStart = $date . ' 00:00:00';
+        $todayEnd = $date . ' 23:59:59';
+
+        $base = Transaction::whereBetween('created_at', [$todayStart, $todayEnd]);
+
+        $totalCount = (clone $base)->count();
+        $totalIncome = (float) (clone $base)->where('type', 'income')->sum('hkd_amount');
+        $totalExpense = (float) (clone $base)->where('type', 'outcome')->sum('hkd_amount');
+
+        // 货币Top3（按HKD汇总绝对值排序）
+        $currencyTop3 = [
+            ['currency' => 'HKD', 'amount' => (float) (clone $base)->sum('hkd_amount')],
+            ['currency' => 'CNY', 'amount' => (float) (clone $base)->sum('rmb_amount')],
+        ];
+        usort($currencyTop3, fn($a, $b) => abs($b['amount']) <=> abs($a['amount']));
+        $currencyTop3 = array_slice($currencyTop3, 0, 3);
+
+        // 渠道Top3（按HKD净额）
+        $channelTop3 = Transaction::selectRaw('channel_id, SUM(CASE WHEN type="income" THEN hkd_amount WHEN type="outcome" THEN -hkd_amount ELSE 0 END) as amount')
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->groupBy('channel_id')
+            ->orderByDesc('amount')
+            ->with('channel')
+            ->limit(3)
+            ->get()
+            ->map(fn($row) => ['channel' => $row->channel->name ?? (string)$row->channel_id, 'amount' => (float) $row->amount])
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'today_stats' => [
+                    'total_count' => $totalCount,
+                    'total_income' => round($totalIncome, 2),
+                    'total_expense' => round($totalExpense, 2),
+                    'net_amount' => round($totalIncome - $totalExpense, 2),
+                ],
+                'currency_top3' => $currencyTop3,
+                'channel_top3' => $channelTop3,
+            ],
+        ]);
+    }
+}

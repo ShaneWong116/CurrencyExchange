@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台服务测试页面</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-item {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 4px solid #1976d2;
+        }
+        .btn {
+            background: #1976d2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #1565c0;
+        }
+        .btn.success { background: #4caf50; }
+        .btn.success:hover { background: #45a049; }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.ok {
+            background: #4caf50;
+            color: white;
+        }
+        .status.error {
+            background: #f44336;
+            color: white;
+        }
+        .status.testing {
+            background: #ff9800;
+            color: white;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 后台服务测试页面</h1>
+        
+        <div class="test-item">
+            <h3>1. API健康检查 <span id="health-status" class="status testing">测试中...</span></h3>
+            <p>测试基础API服务是否正常运行</p>
+            <button class="btn" onclick="testHealth()">测试 /api/health</button>
+            <div id="health-result" class="result"></div>
+        </div>
+
+        <div class="test-item">
+            <h3>2. 后台管理页面 <span id="admin-status" class="status testing">测试中...</span></h3>
+            <p>测试后台管理界面是否可以访问</p>
+            <button class="btn" onclick="testAdmin()">测试 /admin</button>
+            <a href="http://localhost:8000/admin" target="_blank" class="btn success">直接打开后台</a>
+            <div id="admin-result" class="result"></div>
+        </div>
+
+        <div class="test-item">
+            <h3>3. 登录功能测试 <span id="login-status" class="status testing">待测试</span></h3>
+            <p>测试用户登录API功能</p>
+            <button class="btn" onclick="testLogin()">测试登录</button>
+            <div id="login-result" class="result"></div>
+        </div>
+
+        <div class="test-item">
+            <h3>4. 数据接口测试 <span id="data-status" class="status testing">待测试</span></h3>
+            <p>测试业务数据API接口</p>
+            <button class="btn" onclick="testChannels()">测试渠道接口</button>
+            <button class="btn" onclick="testTransactions()">测试交易接口</button>
+            <div id="data-result" class="result"></div>
+        </div>
+
+        <div class="test-item">
+            <h3>🎯 快速访问链接</h3>
+            <a href="http://localhost:8000/admin" target="_blank" class="btn success">🏛️ 后台管理</a>
+            <a href="http://localhost:8000/api/health" target="_blank" class="btn">📡 API健康检查</a>
+            <a href="test_api.html" target="_blank" class="btn">📋 完整API测试</a>
+            <a href="admin.html" target="_blank" class="btn">🎛️ 管理控制台</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // 页面加载时自动测试
+        window.onload = function() {
+            testHealth();
+            testAdmin();
+        };
+
+        async function testHealth() {
+            const statusEl = document.getElementById('health-status');
+            const resultEl = document.getElementById('health-result');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status testing';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '正在测试 API 健康检查...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusEl.textContent = '✅ 正常';
+                    statusEl.className = 'status ok';
+                    resultEl.innerHTML = `<strong>成功！</strong><br>服务器响应: ${data.message}<br>时间戳: ${data.timestamp}`;
+                } else {
+                    throw new Error('API响应异常');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.innerHTML = `<strong>错误:</strong> ${error.message}`;
+            }
+        }
+
+        async function testAdmin() {
+            const statusEl = document.getElementById('admin-status');
+            const resultEl = document.getElementById('admin-result');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status testing';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '正在测试后台管理页面...';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin`);
+                const text = await response.text();
+                
+                if (response.ok && text.includes('财务管理系统')) {
+                    statusEl.textContent = '✅ 正常';
+                    statusEl.className = 'status ok';
+                    resultEl.innerHTML = '<strong>成功！</strong><br>后台管理页面可以正常访问<br><a href="http://localhost:8000/admin" target="_blank">点击这里打开后台</a>';
+                } else {
+                    throw new Error('后台页面内容异常');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.innerHTML = `<strong>错误:</strong> ${error.message}`;
+            }
+        }
+
+        async function testLogin() {
+            const statusEl = document.getElementById('login-status');
+            const resultEl = document.getElementById('login-result');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status testing';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '正在测试登录功能...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    statusEl.textContent = '✅ 正常';
+                    statusEl.className = 'status ok';
+                    resultEl.innerHTML = `<strong>登录成功！</strong><br>用户: ${data.user.name} (${data.user.role})`;
+                } else {
+                    throw new Error(data.message || '登录失败');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.innerHTML = `<strong>错误:</strong> ${error.message}`;
+            }
+        }
+
+        async function testChannels() {
+            const statusEl = document.getElementById('data-status');
+            const resultEl = document.getElementById('data-result');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status testing';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '正在测试渠道接口...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/channels`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    statusEl.textContent = '✅ 正常';
+                    statusEl.className = 'status ok';
+                    resultEl.innerHTML = `<strong>渠道接口正常！</strong><br>返回 ${data.data.length} 个支付渠道`;
+                } else {
+                    throw new Error('渠道接口异常');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.innerHTML = `<strong>错误:</strong> ${error.message}`;
+            }
+        }
+
+        async function testTransactions() {
+            const statusEl = document.getElementById('data-status');
+            const resultEl = document.getElementById('data-result');
+            
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '正在测试交易接口...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/transactions`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    statusEl.textContent = '✅ 正常';
+                    statusEl.className = 'status ok';
+                    resultEl.innerHTML = `<strong>交易接口正常！</strong><br>返回 ${data.data.length} 个交易记录`;
+                } else {
+                    throw new Error('交易接口异常');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.innerHTML = `<strong>错误:</strong> ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
