@@ -7,6 +7,7 @@ use App\Services\SettlementService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 class ListSettlements extends ListRecords
 {
@@ -52,10 +53,9 @@ class ListSettlements extends ListRecords
                                     ->content(function () use ($preview) {
                                         $profit = $preview['profit'];
                                         $color = $profit >= 0 ? 'success' : 'danger';
-                                        return "<span class='text-{$color}-600 font-bold'>" . 
-                                               number_format($profit, 2) . ' HKD</span>';
-                                    })
-                                    ->html(),
+                                        return new HtmlString("<span class='text-{$color}-600 font-bold'>" . 
+                                               number_format($profit, 2) . ' HKD</span>');
+                                    }),
                                 
                                 \Filament\Forms\Components\Placeholder::make('unsettled_count')
                                     ->label('未结余交易')
@@ -67,15 +67,13 @@ class ListSettlements extends ListRecords
                             ->schema([
                                 \Filament\Forms\Components\Placeholder::make('expected_new_capital')
                                     ->label('预期新本金（未扣除其他支出）')
-                                    ->content(fn () => '<span class="text-success-600 font-bold text-lg">' . 
-                                                     number_format($preview['expected_new_capital'], 2) . ' HKD</span>')
-                                    ->html(),
+                                    ->content(fn () => new HtmlString('<span class="text-success-600 font-bold text-lg">' . 
+                                                     number_format($preview['expected_new_capital'], 2) . ' HKD</span>')),
                                 
                                 \Filament\Forms\Components\Placeholder::make('expected_new_hkd_balance')
                                     ->label('预期新港币结余')
-                                    ->content(fn () => '<span class="text-success-600 font-bold text-lg">' . 
-                                                     number_format($preview['expected_new_hkd_balance'], 2) . ' HKD</span>')
-                                    ->html(),
+                                    ->content(fn () => new HtmlString('<span class="text-success-600 font-bold text-lg">' . 
+                                                     number_format($preview['expected_new_hkd_balance'], 2) . ' HKD</span>')),
                             ])
                             ->columns(2),
                         

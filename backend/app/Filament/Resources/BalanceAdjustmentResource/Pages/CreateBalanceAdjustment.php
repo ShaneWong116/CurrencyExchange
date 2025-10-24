@@ -11,10 +11,28 @@ class CreateBalanceAdjustment extends CreateRecord
 {
     protected static string $resource = BalanceAdjustmentResource::class;
 
+    public function mount(): void
+    {
+        parent::mount();
+        
+        // 如果URL中有channel参数，预选该渠道
+        $channelId = request()->query('channel');
+        if ($channelId) {
+            $this->form->fill([
+                'channel_id' => $channelId,
+            ]);
+        }
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = auth()->id();
         $data['type'] = 'manual';
+        
+        // 确保 adjustment_amount 被正确计算（如果前端没有计算）
+        if (isset($data['after_amount']) && isset($data['before_amount'])) {
+            $data['adjustment_amount'] = $data['after_amount'] - $data['before_amount'];
+        }
         
         return $data;
     }
@@ -33,6 +51,12 @@ class CreateBalanceAdjustment extends CreateRecord
         $balance->current_balance = $record->after_amount;
         $balance->save();
         
-        $this->redirect($this->getResource()::getUrl('index'));
+        // 如果是从渠道详情页创建的，返回到渠道详情页
+        $channelId = request()->query('channel');
+        if ($channelId) {
+            $this->redirect($this->getResource()::getUrl('channel', ['channel' => $channelId]));
+        } else {
+            $this->redirect($this->getResource()::getUrl('index'));
+        }
     }
 }

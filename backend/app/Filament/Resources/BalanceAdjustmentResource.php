@@ -38,12 +38,21 @@ class BalanceAdjustmentResource extends Resource
                             ->options(Channel::active()->pluck('name', 'id'))
                             ->required()
                             ->reactive()
-                            ->afterStateUpdated(function (callable $set, $state) {
+                            ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
                                 if ($state) {
                                     $channel = Channel::find($state);
                                     if ($channel) {
                                         $set('rmb_current_balance', $channel->getRmbBalance());
                                         $set('hkd_current_balance', $channel->getHkdBalance());
+                                        
+                                        // 同时更新 before_amount
+                                        $currency = $get('currency');
+                                        if ($currency) {
+                                            $currentBalance = $currency === 'RMB' 
+                                                ? $channel->getRmbBalance() 
+                                                : $channel->getHkdBalance();
+                                            $set('before_amount', $currentBalance);
+                                        }
                                     }
                                 }
                             }),
@@ -55,7 +64,19 @@ class BalanceAdjustmentResource extends Resource
                                 'HKD' => '港币',
                             ])
                             ->required()
-                            ->reactive(),
+                            ->reactive()
+                            ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
+                                $channelId = $get('channel_id');
+                                if ($channelId && $state) {
+                                    $channel = Channel::find($channelId);
+                                    if ($channel) {
+                                        $currentBalance = $state === 'RMB' 
+                                            ? $channel->getRmbBalance() 
+                                            : $channel->getHkdBalance();
+                                        $set('before_amount', $currentBalance);
+                                    }
+                                }
+                            }),
                             
                         Forms\Components\TextInput::make('rmb_current_balance')
                             ->label('当前人民币余额')
@@ -74,35 +95,36 @@ class BalanceAdjustmentResource extends Resource
                     
                 Forms\Components\Section::make('调整详情')
                     ->schema([
-                        Forms\Components\TextInput::make('adjustment_amount')
-                            ->label('调整金额')
-                            ->helperText('正数为增加，负数为减少')
-                            ->numeric()
-                            ->required()
-                            ->reactive()
-                            ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
-                                $currency = $get('currency');
-                                $currentBalance = $currency === 'RMB' 
-                                    ? $get('rmb_current_balance') 
-                                    : $get('hkd_current_balance');
-                                    
-                                if ($currentBalance !== null && $state !== null) {
-                                    $set('before_amount', $currentBalance);
-                                    $set('after_amount', $currentBalance + $state);
-                                }
-                            }),
-                            
                         Forms\Components\TextInput::make('before_amount')
                             ->label('调整前金额')
                             ->numeric()
                             ->disabled()
-                            ->dehydrated(true),
+                            ->dehydrated(true)
+                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币'),
                             
                         Forms\Components\TextInput::make('after_amount')
                             ->label('调整后金额')
+                            ->helperText('直接输入调整后的金额')
+                            ->numeric()
+                            ->required()
+                            ->reactive()
+                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币')
+                            ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
+                                $beforeAmount = $get('before_amount');
+                                if ($beforeAmount !== null && $state !== null) {
+                                    $adjustmentAmount = $state - $beforeAmount;
+                                    $set('adjustment_amount', $adjustmentAmount);
+                                }
+                            }),
+                            
+                        Forms\Components\TextInput::make('adjustment_amount')
+                            ->label('调整金额')
+                            ->helperText('正数为增加，负数为减少')
                             ->numeric()
                             ->disabled()
-                            ->dehydrated(true),
+                            ->dehydrated(true)
+                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币')
+                            ->formatStateUsing(fn ($state) => $state !== null ? ($state >= 0 ? '+' . number_format($state, 2) : number_format($state, 2)) : null),
                             
                         Forms\Components\Textarea::make('reason')
                             ->label('调整原因')
@@ -232,6 +254,7 @@ class BalanceAdjustmentResource extends Resource
             'index' => Pages\ListBalanceAdjustments::route('/'),
             'create' => Pages\CreateBalanceAdjustment::route('/create'),
             'view' => Pages\ViewBalanceAdjustment::route('/{record}'),
+            'channel' => Pages\ViewChannelBalance::route('/channel/{channel}'),
         ];
     }
 

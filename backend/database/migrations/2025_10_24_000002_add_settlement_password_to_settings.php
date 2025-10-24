@@ -13,7 +13,7 @@ return new class extends Migration
             'key_name' => 'settlement_password',
             'key_value' => password_hash('123456', PASSWORD_DEFAULT),
             'description' => '结余确认密码（用于二次验证）',
-            'type' => 'password',
+            'type' => 'string',  // 密码哈希值存储为字符串
             'created_at' => now(),
             'updated_at' => now(),
         ]);

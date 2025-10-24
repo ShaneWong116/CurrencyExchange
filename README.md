@@ -14,12 +14,13 @@
 
 ## 技术架构
 
-### 后端 (Laravel 9)
-- **框架**: Laravel 9 + PHP 8.0+
-- **数据库**: MySQL 8.0
-- **缓存**: Redis 7.0
+### 后端 (Laravel 10)
+- **框架**: Laravel 10.48+ + PHP 8.3.5+
+- **数据库**: MySQL 8.0 / SQLite 3
 - **认证**: Laravel Sanctum (Token认证)
-- **图片处理**: Intervention Image
+- **管理后台**: Filament 3.x
+- **导出功能**: Maatwebsite Excel 3.1+
+- **权限管理**: Spatie Laravel Permission 5.5+
 
 ### 前端 (Vue 3 + Quasar)
 - **框架**: Vue 3 + Composition API
@@ -32,12 +33,25 @@
 
 ### 环境要求
 
-- PHP 8.0+
+**必需软件**:
+- PHP 8.3.5+ 
 - Node.js 16+
-- MySQL 8.0+
-- Redis 7.0+
-- Composer
-- NPM/Yarn
+- MySQL 8.0+ 或 SQLite 3
+- Composer 2.x
+- NPM 8+
+
+**必需PHP扩展**:
+- curl (HTTP客户端)
+- fileinfo (文件类型检测)
+- pdo_mysql (MySQL数据库)
+- mbstring, openssl, tokenizer, xml, ctype, json
+
+**推荐PHP扩展**:
+- gd (图片处理)
+- zip (文件压缩)
+- opcache (性能优化)
+
+> 💡 **快速检查**: 运行 `php check_php_extensions.php` 自动检查所有扩展
 
 ### 后端安装
 
@@ -258,6 +272,61 @@ server {
 }
 ```
 
+## 📦 依赖管理
+
+### 快速检查工具
+
+运行自动检查工具确保所有依赖正确配置：
+
+```bash
+# 检查PHP扩展
+php check_php_extensions.php
+
+# 检查后端依赖
+cd backend
+composer show --installed
+
+# 检查前端依赖
+cd frontend
+npm list --depth=0
+```
+
+### 依赖文档
+
+- **[DEPENDENCY_QUICK_START.md](DEPENDENCY_QUICK_START.md)** - 快速安装指南
+- **[DEPENDENCY_CHECK_REPORT.md](DEPENDENCY_CHECK_REPORT.md)** - 完整检查报告
+- **[PHP_EXTENSIONS_SETUP.md](PHP_EXTENSIONS_SETUP.md)** - PHP扩展配置指南
+
+### 常见依赖问题
+
+**缺少PHP扩展**:
+```bash
+# 1. 检查缺失的扩展
+php check_php_extensions.php
+
+# 2. 编辑php.ini启用扩展
+# Windows: D:\ServBay\etc\php\current\php.ini
+# 取消注释: extension=curl, extension=fileinfo, 等
+
+# 3. 重启Web服务器
+```
+
+**Composer安装失败**:
+```bash
+# 使用国内镜像
+composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
+
+# 忽略平台要求(临时)
+composer install --ignore-platform-reqs
+```
+
+**NPM安装缓慢**:
+```bash
+# 使用淘宝镜像
+npm config set registry https://registry.npmmirror.com
+npm install
+```
+
 ## 故障排除
 
 ### 常见问题
@@ -277,6 +346,10 @@ server {
 4. **图片上传失败**
    - 检查PHP文件上传大小限制
    - 验证存储权限
+
+5. **PHP扩展缺失** ⭐新增
+   - 运行 `php check_php_extensions.php` 检查
+   - 参考 [PHP_EXTENSIONS_SETUP.md](PHP_EXTENSIONS_SETUP.md) 配置
 
 ### 日志位置
 - 后端日志: `backend/storage/logs/laravel.log`
