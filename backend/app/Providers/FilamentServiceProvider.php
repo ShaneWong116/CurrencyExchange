@@ -39,6 +39,7 @@ class FilamentServiceProvider extends PanelProvider
             ->resources([
                 \App\Filament\Resources\TransactionResource::class,
                 \App\Filament\Resources\ChannelResource::class,
+                \App\Filament\Resources\SettlementResource::class,
                 \App\Filament\Resources\TransactionDraftResource::class,
                 \App\Filament\Resources\BalanceAdjustmentResource::class,
                 \App\Filament\Resources\ImageResource::class,
@@ -54,6 +55,7 @@ class FilamentServiceProvider extends PanelProvider
             ->widgets([
                 \App\Filament\Widgets\PrimaryNetInflow::class,
                 \App\Filament\Widgets\StatsOverview::class,
+                \App\Filament\Widgets\SettlementStatsWidget::class,
                 \App\Filament\Widgets\ChannelOverview::class,
                 \App\Filament\Widgets\LocationOverview::class,
             ])

@@ -10,6 +10,12 @@ use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
+/**
+ * 结余服务类
+ * 
+ * @package App\Services
+ */
+
 class SettlementService
 {
     /**
@@ -20,7 +26,6 @@ class SettlementService
         // 1. 获取当前本金和港币结余
         $currentCapital = (float) Setting::get('capital', 0);
         $currentHkdBalance = (float) Setting::get('hkd_balance', 0);
-
         // 2. 计算当前各渠道人民币余额汇总
         $channels = Channel::all();
         $rmbBalanceTotal = 0;
@@ -43,8 +48,8 @@ class SettlementService
         // 港币总量 = 当前港币结余 + 未结余入账港币金额之和
         $hkdTotal = $currentHkdBalance + $unsettledIncomeHkd;
         
-        // 当前结余汇率 = 人民币总量 ÷ 港币总量
-        $settlementRate = $hkdTotal > 0 ? round($rmbTotal / $hkdTotal, 5) : 0;
+        // 当前结余汇率 = 人民币总量 ÷ 港币总量（保留3位小数）
+        $settlementRate = $hkdTotal > 0 ? round($rmbTotal / $hkdTotal, 3) : 0;
 
         // 5. 获取未结余的出账交易数据
         $unsettledOutcomeTransactions = Transaction::unsettled()
@@ -63,12 +68,25 @@ class SettlementService
         // 利润 = 出账港币总额 - 出账港币成本
         $profit = round($outcomeHkdTotal - $outcomeHkdCost, 3);
 
+        // 计算其他支出为0时的预期结果
+        $expectedNewCapital = $currentCapital + $profit;
+        $expectedNewHkdBalance = $currentHkdBalance + $profit;
+
         return [
+            // 当前状态
             'current_capital' => $currentCapital,
             'current_hkd_balance' => $currentHkdBalance,
             'rmb_balance_total' => round($rmbBalanceTotal, 2),
+            
+            // 计算结果
             'settlement_rate' => $settlementRate,
             'profit' => $profit,
+            
+            // 预期结余后状态（不含其他支出）
+            'expected_new_capital' => round($expectedNewCapital, 2),
+            'expected_new_hkd_balance' => round($expectedNewHkdBalance, 2),
+            
+            // 未结余交易统计
             'unsettled_income_count' => $unsettledIncomeTransactions->count(),
             'unsettled_outcome_count' => $unsettledOutcomeTransactions->count(),
             'unsettled_income_rmb' => round($unsettledIncomeRmb, 2),
@@ -76,6 +94,9 @@ class SettlementService
             'unsettled_outcome_rmb' => round($outcomeRmbTotal, 2),
             'unsettled_outcome_hkd' => round($outcomeHkdTotal, 2),
             'outcome_hkd_cost' => $outcomeHkdCost,
+            
+            // 是否可以执行结余
+            'can_settle' => ($unsettledIncomeTransactions->count() + $unsettledOutcomeTransactions->count()) > 0,
         ];
     }
 
@@ -92,20 +113,29 @@ class SettlementService
             // 1. 获取预览数据
             $preview = $this->getPreview();
             
-            // 2. 计算其他支出总额
+            // 2. 业务校验
+            if (!$preview['can_settle']) {
+                throw new Exception('当前没有未结余的交易，无法执行结余操作');
+            }
+            
+            if ($preview['settlement_rate'] <= 0) {
+                throw new Exception('结余汇率计算异常，请检查港币结余是否正确');
+            }
+            
+            // 3. 计算其他支出总额
             $otherExpensesTotal = 0;
             foreach ($expenses as $expense) {
                 $otherExpensesTotal += $expense['amount'] ?? 0;
             }
             
-            // 3. 计算结余后的数据
+            // 4. 计算结余后的数据
             $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal;
             $newHkdBalance = $preview['current_hkd_balance'] + $preview['profit'];
             
-            // 4. 获取下一个序号
+            // 5. 获取下一个序号
             $sequenceNumber = Settlement::getNextSequenceNumber();
             
-            // 5. 创建结余记录
+            // 6. 创建结余记录
             $settlement = Settlement::create([
                 'previous_capital' => $preview['current_capital'],
                 'previous_hkd_balance' => $preview['current_hkd_balance'],
@@ -119,24 +149,26 @@ class SettlementService
                 'notes' => $notes,
             ]);
             
-            // 6. 保存其他支出明细
-            foreach ($expenses as $expense) {
-                SettlementExpense::create([
-                    'settlement_id' => $settlement->id,
-                    'item_name' => $expense['item_name'],
-                    'amount' => $expense['amount'],
-                ]);
+            // 7. 保存其他支出明细
+            if (!empty($expenses)) {
+                foreach ($expenses as $expense) {
+                    SettlementExpense::create([
+                        'settlement_id' => $settlement->id,
+                        'item_name' => $expense['item_name'],
+                        'amount' => $expense['amount'],
+                    ]);
+                }
             }
             
-            // 7. 更新所有未结余的交易状态
+            // 8. 更新所有未结余的交易状态
             Transaction::unsettled()->update([
                 'settlement_status' => 'settled',
                 'settlement_id' => $settlement->id,
             ]);
             
-            // 8. 更新系统设置中的本金和港币结余
-            Setting::set('capital', $newCapital, '系统本金(HKD)', 'number');
-            Setting::set('hkd_balance', $newHkdBalance, '港币结余(HKD)', 'number');
+            // 9. 更新系统设置中的本金和港币结余
+            Setting::set('capital', round($newCapital, 2), '系统本金(HKD)', 'number');
+            Setting::set('hkd_balance', round($newHkdBalance, 2), '港币结余(HKD)', 'number');
             
             return $settlement;
         });
