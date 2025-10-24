@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/home/principal', [\App\Http\Controllers\Api\HomeController::class, 'principal']);
 
     // 结余管理
+    Route::get('/settlements/check-today', [\App\Http\Controllers\Api\SettlementController::class, 'checkToday']);
+    Route::post('/settlements/verify-password', [\App\Http\Controllers\Api\SettlementController::class, 'verifyPassword']);
     Route::get('/settlements/preview', [\App\Http\Controllers\Api\SettlementController::class, 'preview']);
     Route::post('/settlements', [\App\Http\Controllers\Api\SettlementController::class, 'store']);
     Route::get('/settlements', [\App\Http\Controllers\Api\SettlementController::class, 'index']);

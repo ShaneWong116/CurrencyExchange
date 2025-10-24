@@ -10,9 +10,13 @@ class Settlement extends Model
     use HasFactory;
 
     protected $fillable = [
+        'settlement_date',
         'previous_capital',
         'previous_hkd_balance',
         'profit',
+        'outgoing_profit',
+        'instant_profit',
+        'instant_buyout_rate',
         'other_expenses_total',
         'new_capital',
         'new_hkd_balance',
@@ -20,12 +24,17 @@ class Settlement extends Model
         'rmb_balance_total',
         'sequence_number',
         'notes',
+        'created_by',
     ];
 
     protected $casts = [
+        'settlement_date' => 'date',
         'previous_capital' => 'decimal:2',
         'previous_hkd_balance' => 'decimal:2',
         'profit' => 'decimal:3',
+        'outgoing_profit' => 'decimal:3',
+        'instant_profit' => 'decimal:3',
+        'instant_buyout_rate' => 'decimal:5',
         'other_expenses_total' => 'decimal:2',
         'new_capital' => 'decimal:2',
         'new_hkd_balance' => 'decimal:2',
@@ -59,10 +68,42 @@ class Settlement extends Model
     }
 
     /**
+     * 关联到执行结余的用户
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * 检查今日是否已结余
+     */
+    public static function hasSettledToday()
+    {
+        return static::whereDate('settlement_date', now()->toDateString())->exists();
+    }
+
+    /**
+     * 获取今日结余记录
+     */
+    public static function getTodaySettlement()
+    {
+        return static::whereDate('settlement_date', now()->toDateString())->first();
+    }
+
+    /**
      * 按时间范围查询
      */
     public function scopeByDateRange($query, $startDate, $endDate)
     {
-        return $query->whereBetween('created_at', [$startDate, $endDate]);
+        return $query->whereBetween('settlement_date', [$startDate, $endDate]);
+    }
+
+    /**
+     * 按结余日期排序（最新的在前）
+     */
+    public function scopeOrderByDate($query, $direction = 'desc')
+    {
+        return $query->orderBy('settlement_date', $direction);
     }
 }

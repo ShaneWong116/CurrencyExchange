@@ -62,6 +62,26 @@ const routes = [
     component: () => import('@/pages/ProfilePage.vue'),
     meta: { requiresAuth: true }
   },
+  // 结余管理
+  {
+    path: '/settlements',
+    name: 'SettlementList',
+    component: () => import('@/pages/SettlementListPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/settlement/preview',
+    name: 'SettlementPreview',
+    component: () => import('@/pages/SettlementPreviewPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/settlements/:id',
+    name: 'SettlementDetail',
+    component: () => import('@/pages/SettlementDetailPage.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

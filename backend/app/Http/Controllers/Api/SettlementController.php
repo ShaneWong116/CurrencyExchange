@@ -17,13 +17,75 @@ class SettlementController extends Controller
     }
 
     /**
-     * 获取结余预览
-     * GET /api/settlements/preview
+     * 检查今日是否已结余
+     * GET /api/settlements/check-today
      */
-    public function preview()
+    public function checkToday()
     {
         try {
-            $preview = $this->settlementService->getPreview();
+            $result = $this->settlementService->checkTodaySettlement();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '检查失败: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 验证结余确认密码
+     * POST /api/settlements/verify-password
+     * 
+     * @body {
+     *   "password": "用户输入的密码"
+     * }
+     */
+    public function verifyPassword(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'password' => 'required|string',
+            ], [
+                'password.required' => '密码不能为空',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '密码不能为空',
+                ], 422);
+            }
+
+            $valid = $this->settlementService->verifyPassword($request->input('password'));
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'valid' => $valid,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '验证失败: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 获取结余预览
+     * GET /api/settlements/preview?instant_buyout_rate=0.929
+     */
+    public function preview(Request $request)
+    {
+        try {
+            $instantBuyoutRate = $request->input('instant_buyout_rate');
+            $preview = $this->settlementService->getPreview($instantBuyoutRate);
             
             return response()->json([
                 'success' => true,
@@ -42,10 +104,12 @@ class SettlementController extends Controller
      * POST /api/settlements
      * 
      * @body {
+     *   "password": "确认密码",
      *   "expenses": [
      *     {"item_name": "薪金", "amount": 100},
      *     {"item_name": "金流费用", "amount": 200}
      *   ],
+     *   "instant_buyout_rate": 0.929,
      *   "notes": "备注信息"
      * }
      */
@@ -54,16 +118,21 @@ class SettlementController extends Controller
         try {
             // 验证输入
             $validator = Validator::make($request->all(), [
+                'password' => 'required|string',
                 'expenses' => 'nullable|array',
                 'expenses.*.item_name' => 'required|string|max:100',
                 'expenses.*.amount' => 'required|numeric|min:0',
+                'instant_buyout_rate' => 'nullable|numeric|min:0',
                 'notes' => 'nullable|string|max:1000',
             ], [
+                'password.required' => '确认密码不能为空',
                 'expenses.*.item_name.required' => '支出项目名称不能为空',
                 'expenses.*.item_name.max' => '支出项目名称不能超过100个字符',
                 'expenses.*.amount.required' => '支出金额不能为空',
                 'expenses.*.amount.numeric' => '支出金额必须是数字',
                 'expenses.*.amount.min' => '支出金额不能为负数',
+                'instant_buyout_rate.numeric' => '即时买断汇率必须是数字',
+                'instant_buyout_rate.min' => '即时买断汇率不能为负数',
                 'notes.max' => '备注不能超过1000个字符',
             ]);
 
@@ -75,10 +144,16 @@ class SettlementController extends Controller
                 ], 422);
             }
 
+            // 获取当前登录用户ID（如果有认证系统）
+            $userId = $request->user() ? $request->user()->id : null;
+
             // 执行结余
             $settlement = $this->settlementService->execute(
+                $request->input('password'),
                 $request->input('expenses', []),
-                $request->input('notes')
+                $request->input('instant_buyout_rate'),
+                $request->input('notes'),
+                $userId
             );
 
             // 返回结余详情
@@ -92,8 +167,8 @@ class SettlementController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => '结余操作失败: ' . $e->getMessage(),
-            ], 500);
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 
