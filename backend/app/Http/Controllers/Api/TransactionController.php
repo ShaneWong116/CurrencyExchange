@@ -190,18 +190,15 @@ class TransactionController extends Controller
     }
 
     /**
-     * 交易统计：今日统计与Top3
+     * 交易统计：未结算交易统计
      */
     public function statistics(Request $request)
     {
-        $date = $request->query('date', now()->toDateString());
         $userId = $request->user()->id;
 
-        $todayStart = $date . ' 00:00:00';
-        $todayEnd = $date . ' 23:59:59';
-
-        $base = Transaction::whereBetween('created_at', [$todayStart, $todayEnd])
-            ->where('user_id', $userId);
+        // 查询未结算的交易
+        $base = Transaction::where('user_id', $userId)
+            ->where('settlement_status', 'unsettled'); // 使用 settlement_status 字段判断未结算
 
         $totalCount = (clone $base)->count();
         $totalIncome = (float) (clone $base)->where('type', 'income')->sum('hkd_amount');
@@ -230,8 +227,8 @@ class TransactionController extends Controller
 
         // 渠道Top3（按HKD净额）
         $channelTop3 = Transaction::selectRaw('channel_id, SUM(CASE WHEN type="income" THEN hkd_amount WHEN type="outcome" THEN -hkd_amount ELSE 0 END) as amount')
-            ->whereBetween('created_at', [$todayStart, $todayEnd])
             ->where('user_id', $userId)
+            ->where('settlement_status', 'unsettled')
             ->groupBy('channel_id')
             ->orderByDesc('amount')
             ->with('channel')
