@@ -195,15 +195,30 @@ class TransactionController extends Controller
     public function statistics(Request $request)
     {
         $date = $request->query('date', now()->toDateString());
+        $userId = $request->user()->id;
 
         $todayStart = $date . ' 00:00:00';
         $todayEnd = $date . ' 23:59:59';
 
-        $base = Transaction::whereBetween('created_at', [$todayStart, $todayEnd]);
+        $base = Transaction::whereBetween('created_at', [$todayStart, $todayEnd])
+            ->where('user_id', $userId);
 
         $totalCount = (clone $base)->count();
         $totalIncome = (float) (clone $base)->where('type', 'income')->sum('hkd_amount');
         $totalExpense = (float) (clone $base)->where('type', 'outcome')->sum('hkd_amount');
+
+        // 统计按交易类型分组的数据
+        $byType = [];
+        $types = ['income', 'outcome', 'instant_buy', 'exchange'];
+        
+        foreach ($types as $type) {
+            $typeQuery = (clone $base)->where('type', $type);
+            $byType[$type] = [
+                'rmb_amount' => round((float) $typeQuery->sum('rmb_amount'), 2),
+                'hkd_amount' => round((float) (clone $typeQuery)->sum('hkd_amount'), 2),
+                'count' => (clone $typeQuery)->count(),
+            ];
+        }
 
         // 货币Top3（按HKD汇总绝对值排序）
         $currencyTop3 = [
@@ -216,6 +231,7 @@ class TransactionController extends Controller
         // 渠道Top3（按HKD净额）
         $channelTop3 = Transaction::selectRaw('channel_id, SUM(CASE WHEN type="income" THEN hkd_amount WHEN type="outcome" THEN -hkd_amount ELSE 0 END) as amount')
             ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->where('user_id', $userId)
             ->groupBy('channel_id')
             ->orderByDesc('amount')
             ->with('channel')
@@ -233,6 +249,7 @@ class TransactionController extends Controller
                     'total_expense' => round($totalExpense, 2),
                     'net_amount' => round($totalIncome - $totalExpense, 2),
                 ],
+                'by_type' => $byType,
                 'currency_top3' => $currencyTop3,
                 'channel_top3' => $channelTop3,
             ],
