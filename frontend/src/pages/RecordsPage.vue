@@ -14,19 +14,16 @@
     <!-- Summary Section -->
     <section class="summary-section">
       <div class="summary-card">
-        <div class="summary-label">{{ getSummaryLabel() }}</div>
-        <div class="summary-amount">{{ getSummaryMainValue() }}</div>
-        <div class="summary-subtitle">{{ getSummarySubtitle() }}</div>
         <div class="summary-details">
-          <div class="detail-box">
+          <div class="detail-row">
             <div class="detail-label">人民币</div>
             <div class="detail-value">¥{{ formatAmount(getCurrentCNY()) }}</div>
           </div>
-          <div class="detail-box">
+          <div class="detail-row">
             <div class="detail-label">港币</div>
             <div class="detail-value">HK${{ formatAmount(getCurrentHKD()) }}</div>
           </div>
-          <div class="detail-box">
+          <div class="detail-row">
             <div class="detail-label">交易数</div>
             <div class="detail-value">{{ getCurrentCount() }}笔</div>
           </div>
@@ -179,35 +176,6 @@ export default {
     await this.fetchTransactions()
   },
   methods: {
-    getSummaryLabel() {
-      const labels = {
-        'all': '未结算总计',
-        'income': '入账',
-        'outcome': '出账',
-        'instant_buy': '即时买断'
-      }
-      return labels[this.filterType] || '未结算总计'
-    },
-    getSummarySubtitle() {
-      if (this.filterType === 'all') {
-        return '人民币结余'
-      }
-      const labels = {
-        'income': '入账总额',
-        'outcome': '出账总额',
-        'instant_buy': '即时买断总额'
-      }
-      return labels[this.filterType] || ''
-    },
-    getSummaryMainValue() {
-      if (this.filterType === 'all') {
-        // 显示人民币结余
-        const balance = this.stats.income.cny - this.stats.outcome.cny
-        return '¥' + this.formatAmount(balance)
-      }
-      // 显示当前类型的人民币总额
-      return '¥' + this.formatAmount(this.getCurrentCNY())
-    },
     getCurrentCNY() {
       if (this.filterType === 'all') {
         return this.stats.income.cny + this.stats.outcome.cny + this.stats.instant.cny
@@ -432,9 +400,33 @@ export default {
 
 /* Header */
 .page-header {
-  background: #1976D2;
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 50%, #0D47A1 100%);
   padding: 16px 16px 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.page-header::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
 }
 
 .header-content {
@@ -442,13 +434,17 @@ export default {
   align-items: center;
   justify-content: space-between;
   max-width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .header-title {
   color: white;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.5px;
 }
 
 .header-user {
@@ -470,58 +466,74 @@ export default {
 /* Summary Section */
 .summary-section {
   padding: 16px;
-  background: #fff;
+  background: #f5f5f5;
 }
 
 .summary-card {
-  text-align: center;
-  padding: 20px 16px;
-}
-
-.summary-label {
-  font-size: 14px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.summary-amount {
-  font-size: 40px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 4px;
-}
-
-.summary-subtitle {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 16px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .summary-details {
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
   gap: 16px;
-  padding: 0 16px;
 }
 
-.detail-box {
-  flex: 1;
-  text-align: center;
-  min-width: 0;
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
+}
+
+.detail-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.12);
+  border-color: #e3f2fd;
 }
 
 .detail-label {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 6px;
-  white-space: nowrap;
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-label::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+}
+
+.detail-row:nth-child(1) .detail-label::before {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+}
+
+.detail-row:nth-child(2) .detail-label::before {
+  background: linear-gradient(135deg, #2196F3 0%, #42A5F5 100%);
+}
+
+.detail-row:nth-child(3) .detail-label::before {
+  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
 }
 
 .detail-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  word-break: break-all;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 /* Filter Section */
@@ -529,38 +541,41 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px;
+  background: #f5f5f5;
+  margin-bottom: 8px;
 }
 
 .filter-tabs {
   display: flex;
-  gap: 20px;
+  gap: 8px;
+  background: #fff;
+  padding: 4px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .tab-item {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
   cursor: pointer;
-  padding-bottom: 4px;
-  transition: all 0.3s;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
   position: relative;
+  border-radius: 8px;
+  font-weight: 500;
 }
 
 .tab-item.active {
-  color: #1976D2;
+  color: #fff;
   font-weight: 600;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 }
 
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -12px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #1976D2;
+.tab-item:not(.active):hover {
+  background: #f5f5f5;
+  color: #1976D2;
 }
 
 .refresh-btn {
@@ -572,36 +587,71 @@ export default {
 /* Transaction Section */
 .transaction-section {
   background: #f5f5f5;
-  padding-top: 8px;
+  padding: 0 16px 16px;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 20px;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 2px solid #f5f5f5;
 }
 
 .section-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: #333;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: '';
+  width: 3px;
+  height: 18px;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  border-radius: 2px;
 }
 
 /* Transaction List */
 .transaction-list {
   background: #fff;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .transaction-item {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #f5f5f5;
-  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f8f8f8;
+  gap: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.transaction-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.transaction-item:hover {
+  background: #fafafa;
+}
+
+.transaction-item:hover::before {
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
 }
 
 .transaction-item:last-child {
@@ -609,33 +659,40 @@ export default {
 }
 
 .transaction-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.transaction-item:hover .transaction-icon {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .icon-income {
-  background: #389e0d;
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
 }
 
 .icon-outcome {
-  background: #ff4d4f;
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
 }
 
 .icon-instant {
-  background: #722ed1;
+  background: linear-gradient(135deg, #722ed1 0%, #9254de 100%);
 }
 
 .icon-exchange {
-  background: #1890ff;
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
 }
 
 .icon-default {
-  background: #bfbfbf;
+  background: linear-gradient(135deg, #bfbfbf 0%, #d9d9d9 100%);
 }
 
 .transaction-main {
@@ -680,32 +737,41 @@ export default {
 
 .status-badge-small {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 4px 10px;
   flex-shrink: 0;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 /* Amounts Row: Highlighted CNY and HKD */
 .transaction-amounts-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 8px;
+  margin: 4px 0;
 }
 
 .amount-cny-highlight {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #d32f2f;
+  letter-spacing: 0.3px;
 }
 
 .amount-hkd-highlight {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #1976d2;
+  letter-spacing: 0.3px;
 }
 
 .arrow-icon {
-  color: #bdbdbd;
+  color: #90a4ae;
+  opacity: 0.7;
 }
 
 /* Footer Row: Time + ID */

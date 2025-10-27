@@ -1,12 +1,21 @@
 <template>
-  <q-page class="q-pa-md">
-    <q-header class="bg-primary">
-      <q-toolbar>
-        <q-btn flat round icon="arrow_back" @click="$router.back()" />
-        <q-toolbar-title>{{ pageTitle }}</q-toolbar-title>
-      </q-toolbar>
-    </q-header>
-    <q-form @submit="onSubmit" class="column q-gutter-md">
+  <q-page class="transaction-entry-page">
+    <!-- Header -->
+    <header class="page-header">
+      <div class="header-content">
+        <q-btn 
+          flat 
+          round 
+          icon="arrow_back" 
+          @click="$router.back()" 
+          class="back-btn"
+        />
+        <div class="header-title">{{ pageTitle }}</div>
+      </div>
+    </header>
+
+    <div class="form-container">
+      <q-form @submit="onSubmit" class="transaction-form">
       <!-- 金额信息 -->
       <q-card class="form-card">
         <q-card-section>
@@ -15,10 +24,10 @@
           </div>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-4">
-              <q-input v-model.number="form.rmbAmount" label="人民币金额" type="number" step="0.01" :rules="[val => !!val && val > 0 || '金额必须大于0']" />
+              <q-input v-model.number="form.rmbAmount" label="人民币金额" type="number" step="0.01" :rules="[val => val !== null && val !== undefined && val >= 0 || '金额必须大于等于0']" />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model.number="form.hkdAmount" label="港币金额" type="number" step="0.01" :rules="[val => !!val && val > 0 || '金额必须大于0']" />
+              <q-input v-model.number="form.hkdAmount" label="港币金额" type="number" step="0.01" :rules="[val => val !== null && val !== undefined && val >= 0 || '金额必须大于等于0']" />
             </div>
             <div class="col-12 col-sm-4">
               <q-input v-model.number="form.exchangeRate" label="汇率（CNY/HKD）" type="number" step="0.00001" :rules="[val => !!val && val > 0 || '汇率必须大于0']" hint="将按 人民币/港币 自动计算，修改任一金额会重新计算" />
@@ -97,12 +106,31 @@
         </q-card-section>
       </q-card>
 
-      <!-- 底部操作条 -->
-      <div class="row q-gutter-sm q-mt-md no-wrap">
-        <q-btn color="grey-8" text-color="white" label="存为草稿" class="col" @click.prevent="saveDraft" :loading="isSavingDraft" />
-        <q-btn color="primary" label="提交录入" class="col" type="submit" :loading="isSubmitting" />
-      </div>
-    </q-form>
+        <!-- 底部操作条 -->
+        <div class="action-buttons">
+          <button 
+            type="button"
+            class="action-btn draft-btn" 
+            @click.prevent="saveDraft" 
+            :disabled="isSavingDraft"
+          >
+            <q-spinner v-if="isSavingDraft" size="20px" color="white" />
+            <q-icon v-else name="save" size="20px" />
+            <span>存为草稿</span>
+          </button>
+          
+          <button 
+            type="submit"
+            class="action-btn submit-btn" 
+            :disabled="isSubmitting"
+          >
+            <q-spinner v-if="isSubmitting" size="20px" color="white" />
+            <q-icon v-else name="check_circle" size="20px" />
+            <span>提交录入</span>
+          </button>
+        </div>
+      </q-form>
+    </div>
   </q-page>
 </template>
 
@@ -160,7 +188,9 @@ const instantRateRules = [
 const autoCalcRate = () => {
   const rmb = Number(form.value.rmbAmount)
   const hkd = Number(form.value.hkdAmount)
-  if (rmb > 0 && hkd > 0) {
+  // 只有当港币大于0时才计算汇率，避免除以0
+  // 人民币可以为0，但港币必须大于0才能计算汇率
+  if (rmb >= 0 && hkd > 0) {
     form.value.exchangeRate = Number((rmb / hkd).toFixed(5))
   }
 }
@@ -336,15 +366,251 @@ onBeforeUnmount(() => {})
 </script>
 
 <style scoped>
-/* 使用 Quasar 默认卡片风格，移除自定义圆角覆盖 */
-.upload-area {
-  border: 1px dashed rgba(0, 0, 0, 0.3);
-  min-height: 120px;
-  border-radius: 6px;
-  color: #666;
+/* Page Layout */
+.transaction-entry-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 40px;
 }
-.hidden { display: none; }
-.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Header */
+.page-header {
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 50%, #0D47A1 100%);
+  padding: 16px 20px 24px;
+  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.back-btn {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.5px;
+}
+
+/* Form Container */
+.form-container {
+  padding: 20px 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.transaction-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Form Cards */
+.form-card {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease;
+}
+
+.form-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+.form-card .text-subtitle1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-card .text-subtitle1::before {
+  content: '';
+  width: 3px;
+  height: 18px;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  border-radius: 2px;
+}
+
+/* Upload Area */
+.upload-area {
+  border: 2px dashed #d9d9d9;
+  min-height: 140px;
+  border-radius: 12px;
+  color: #999;
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+  border-color: #1976D2;
+  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+  color: #1976D2;
+}
+
+.upload-area .q-icon {
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover .q-icon {
+  transform: scale(1.1);
+}
+
+/* Image Items */
+.q-item.bg-grey-2 {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+  border-radius: 10px !important;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s ease;
+}
+
+.q-item.bg-grey-2:hover {
+  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%) !important;
+  border-color: #90caf9;
+  transform: translateX(4px);
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.action-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.draft-btn {
+  background: white;
+  color: #666;
+  border: 2px solid #d9d9d9;
+}
+
+.draft-btn:not(:disabled):hover {
+  background: #fafafa;
+  border-color: #bbb;
+  color: #333;
+}
+
+.submit-btn {
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  color: white;
+}
+
+.submit-btn:not(:disabled):hover {
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Input Customization */
+:deep(.q-field__control) {
+  border-radius: 10px !important;
+}
+
+:deep(.q-field--outlined .q-field__control:before) {
+  border-color: #e0e0e0;
+}
+
+:deep(.q-field--outlined .q-field__control:hover:before) {
+  border-color: #1976D2;
+}
+
+:deep(.q-field--focused .q-field__control) {
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+/* Utility Classes */
+.hidden { 
+  display: none; 
+}
+
+.ellipsis { 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  justify-content: center;
+  align-items: center;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-container {
+    padding: 16px 12px;
+  }
+  
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  :deep(.row.q-col-gutter-md) {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  :deep(.row.q-col-gutter-md > div) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
 </style>
 
 

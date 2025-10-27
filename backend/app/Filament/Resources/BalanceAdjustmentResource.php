@@ -107,31 +107,25 @@ class BalanceAdjustmentResource extends Resource
                             ->helperText('直接输入调整后的金额')
                             ->numeric()
                             ->required()
-                            ->reactive()
+                            ->live(onBlur: true)
                             ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币')
                             ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
+                                if ($state === null || $state === '') {
+                                    return;
+                                }
                                 $beforeAmount = $get('before_amount');
-                                if ($beforeAmount !== null && $state !== null) {
-                                    $adjustmentAmount = $state - $beforeAmount;
+                                if ($beforeAmount !== null && is_numeric($state)) {
+                                    $adjustmentAmount = floatval($state) - floatval($beforeAmount);
                                     $set('adjustment_amount', $adjustmentAmount);
                                 }
                             }),
                             
-                        Forms\Components\TextInput::make('adjustment_amount')
-                            ->label('调整金额')
-                            ->helperText('正数为增加，负数为减少')
-                            ->numeric()
-                            ->disabled()
-                            ->dehydrated(true)
-                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币')
-                            ->formatStateUsing(fn ($state) => $state !== null ? ($state >= 0 ? '+' . number_format($state, 2) : number_format($state, 2)) : null),
-                            
                         Forms\Components\Textarea::make('reason')
                             ->label('调整原因')
-                            ->required()
                             ->rows(3)
-                            ->columnSpan('full'),
-                    ])->columns(3),
+                            ->columnSpan('full')
+                            ->placeholder('可选：请输入调整原因'),
+                    ])->columns(2),
             ]);
     }
 

@@ -1,140 +1,81 @@
 <template>
-  <q-page>
+  <q-page class="profile-page">
+    <!-- 顶部装饰 -->
+    <div class="page-header">
+      <div class="header-decoration"></div>
+    </div>
 
-    <div class="q-pa-md">
+    <div class="profile-content">
       <!-- 用户信息卡片 -->
-      <q-card class="info-card q-mb-md">
-        <q-card-section>
-          <div class="row items-center">
-            <div class="col-auto q-mr-md">
-              <q-avatar size="64px" color="primary" text-color="white">
-                <q-icon name="person" size="32px" />
-              </q-avatar>
-            </div>
-            <div class="col">
-              <div class="text-h6">{{ authStore.user?.name }}</div>
-              <div class="text-grey-6">{{ authStore.user?.username }}</div>
-              <div class="text-caption text-grey-5">
-                最后登录: {{ formatTime(authStore.user?.last_login_at) }}
-              </div>
-            </div>
+      <div class="user-card">
+        <div class="user-avatar-wrapper">
+          <div class="avatar-container">
+            <q-icon name="person" size="48px" class="avatar-icon" />
           </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- 统计信息 -->
-      <q-card class="info-card q-mb-md">
-        <q-card-section>
-          <div class="text-subtitle1 q-mb-md">数据统计</div>
-          <div class="row text-center">
-            <div class="col">
-              <div class="text-h5 text-primary">{{ userStats.totalTransactions }}</div>
-              <div class="text-grey-6">总交易数</div>
-            </div>
-            <div class="col">
-              <div class="text-h5 text-orange">{{ userStats.totalDrafts }}</div>
-              <div class="text-grey-6">草稿数</div>
-            </div>
-            <div class="col">
-              <div class="text-h5 text-red">{{ userStats.pendingCount }}</div>
-              <div class="text-grey-6">待同步</div>
-            </div>
+        </div>
+        <div class="user-details">
+          <div class="user-name">{{ authStore.user?.name }}</div>
+          <div class="user-username">@{{ authStore.user?.username }}</div>
+          <div class="user-login-time">
+            最后登录: {{ formatTime(authStore.user?.last_login_at) }}
           </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- 同步状态 -->
-      <q-card class="info-card q-mb-md">
-        <q-card-section>
-          <div class="row items-center">
-            <div class="col">
-              <div class="text-subtitle1">同步状态</div>
-              <div class="text-grey-6 q-mt-xs">
-                <div>网络状态: {{ isOnline ? '在线' : '离线' }}</div>
-                <div>最后同步: {{ lastSyncTime }}</div>
-              </div>
-            </div>
-            <div class="col-auto">
-              <q-btn
-                round
-                :icon="isOnline ? 'cloud_done' : 'cloud_off'"
-                :color="isOnline ? 'positive' : 'negative'"
-                @click="handleSync"
-                :loading="isSyncing"
-              />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- 应用信息 -->
-      <q-card class="info-card q-mb-md" style="border-radius: 12px;">
-        <q-card-section>
-          <div class="text-subtitle1 q-mb-md">应用信息</div>
-          <div class="q-gutter-sm">
-            <div class="row">
-              <div class="col-4 text-grey-6">版本:</div>
-              <div class="col">1.0.0</div>
-            </div>
-            <div class="row">
-              <div class="col-4 text-grey-6">构建:</div>
-              <div class="col">{{ buildTime }}</div>
-            </div>
-            <div class="row">
-              <div class="col-4 text-grey-6">浏览器:</div>
-              <div class="col">{{ browserInfo }}</div>
-            </div>
-            <div class="row">
-              <div class="col-4 text-grey-6">存储:</div>
-              <div class="col">{{ storageInfo }}</div>
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- 操作按钮 -->
-      <div class="q-gutter-md">
-        <q-btn
-          label="清除本地数据"
-          color="orange"
-          outline
-          class="full-width"
-          @click="clearLocalData"
-        />
-        
-        <q-btn
-          label="退出登录"
-          color="negative"
-          outline
-          class="full-width"
-          @click="logout"
-        />
+        </div>
       </div>
 
-      
+      <!-- 统计信息 -->
+      <div class="stats-card">
+        <div class="stats-title">数据统计</div>
+        <div class="stats-grid">
+          <div class="stat-item primary-stat">
+            <div class="stat-icon-wrapper primary-bg">
+              <q-icon name="receipt_long" size="24px" class="stat-icon" />
+            </div>
+            <div class="stat-value">{{ userStats.totalTransactions }}</div>
+            <div class="stat-label">总交易数</div>
+          </div>
+          <div class="stat-item orange-stat">
+            <div class="stat-icon-wrapper orange-bg">
+              <q-icon name="edit_note" size="24px" class="stat-icon" />
+            </div>
+            <div class="stat-value">{{ userStats.totalDrafts }}</div>
+            <div class="stat-label">草稿数</div>
+          </div>
+          <div class="stat-item red-stat">
+            <div class="stat-icon-wrapper red-bg">
+              <q-icon name="sync" size="24px" class="stat-icon" />
+            </div>
+            <div class="stat-value">{{ userStats.pendingCount }}</div>
+            <div class="stat-label">待同步</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="action-buttons">
+        <button class="action-btn logout-btn logout-btn-full" @click="logout">
+          <q-icon name="logout" size="20px" />
+          <span>退出登录</span>
+        </button>
+      </div>
     </div>
+    
     <BottomNavigation />
   </q-page>
 </template>
 
 <script setup>
 import BottomNavigation from '@/components/BottomNavigation.vue'
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDraftStore } from '@/stores/draft'
 import { useTransactionStore } from '@/stores/transaction'
-import { Dialog, Notify } from 'quasar'
+import { Dialog } from 'quasar'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const draftStore = useDraftStore()
 const transactionStore = useTransactionStore()
-
-const isOnline = ref(navigator.onLine)
-const isSyncing = ref(false)
-const lastSyncTime = ref('未同步')
-
 
 // 用户统计
 const userStats = computed(() => ({
@@ -143,30 +84,6 @@ const userStats = computed(() => ({
   pendingCount: draftStore.pendingCount
 }))
 
-// 构建时间
-const buildTime = computed(() => {
-  return new Date().toLocaleString('zh-CN')
-})
-
-// 浏览器信息
-const browserInfo = computed(() => {
-  const ua = navigator.userAgent
-  if (ua.indexOf('Chrome') > -1) return 'Chrome'
-  if (ua.indexOf('Firefox') > -1) return 'Firefox'
-  if (ua.indexOf('Safari') > -1) return 'Safari'
-  if (ua.indexOf('Edge') > -1) return 'Edge'
-  return '未知'
-})
-
-// 存储信息
-const storageInfo = computed(() => {
-  if (navigator.storage && navigator.storage.estimate) {
-    return '支持 Storage API'
-  }
-  return '基础存储'
-})
-
-
 // 格式化时间
 const formatTime = (timeString) => {
   if (!timeString) return '无'
@@ -174,84 +91,11 @@ const formatTime = (timeString) => {
   return date.toLocaleString('zh-CN')
 }
 
-// 同步数据
-const handleSync = async () => {
-  if (!isOnline.value) {
-    Notify.create({
-      type: 'warning',
-      message: '网络连接异常，无法同步',
-      position: 'top'
-    })
-    return
-  }
-
-  isSyncing.value = true
-  try {
-    // 同步草稿
-    await draftStore.syncDrafts()
-    // 同步待提交队列
-    await draftStore.syncPendingQueue()
-    // 刷新数据
-    await Promise.all([
-      draftStore.fetchDrafts(),
-      transactionStore.fetchTransactions(),
-      authStore.fetchUserInfo()
-    ])
-    
-    lastSyncTime.value = new Date().toLocaleString('zh-CN')
-    
-    Notify.create({
-      type: 'positive',
-      message: '同步完成',
-      position: 'top'
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: '同步失败',
-      position: 'top'
-    })
-  } finally {
-    isSyncing.value = false
-  }
-}
-
-// 清除本地数据
-const clearLocalData = () => {
-  Dialog.create({
-    title: '确认清除',
-    message: '这将清除所有本地数据（草稿、待同步队列等），但不会影响已提交的数据。确定要继续吗？',
-    cancel: true,
-    persistent: true
-  }).onOk(() => {
-    // 清除本地草稿和待同步队列
-    draftStore.localDrafts = []
-    draftStore.pendingQueue = []
-    
-    // 清除其他缓存数据
-    const keysToRemove = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key.startsWith('draft') || key.startsWith('transaction')) {
-        keysToRemove.push(key)
-      }
-    }
-    
-    keysToRemove.forEach(key => localStorage.removeItem(key))
-    
-    Notify.create({
-      type: 'positive',
-      message: '本地数据已清除',
-      position: 'top'
-    })
-  })
-}
-
 // 退出登录
 const logout = () => {
   Dialog.create({
     title: '确认退出',
-    message: '确定要退出登录吗？本地数据将保留。',
+    message: '确定要退出登录吗？',
     cancel: true,
     persistent: true
   }).onOk(async () => {
@@ -259,41 +103,267 @@ const logout = () => {
     router.push('/login')
   })
 }
-
-// 网络状态监听
-const handleOnline = () => {
-  isOnline.value = true
-  Notify.create({
-    type: 'positive',
-    message: '网络已连接',
-    position: 'top'
-  })
-}
-
-const handleOffline = () => {
-  isOnline.value = false
-  Notify.create({
-    type: 'warning',
-    message: '网络已断开',
-    position: 'top'
-  })
-}
-
-onMounted(() => {
-  // 监听网络状态
-  window.addEventListener('online', handleOnline)
-  window.addEventListener('offline', handleOffline)
-  
-  // 设置最后同步时间
-  const lastSync = localStorage.getItem('lastSyncTime')
-  if (lastSync) {
-    lastSyncTime.value = new Date(lastSync).toLocaleString('zh-CN')
-  }
-  
-  // 清理函数
-  return () => {
-    window.removeEventListener('online', handleOnline)
-    window.removeEventListener('offline', handleOffline)
-  }
-})
 </script>
+
+<style scoped>
+/* Page Layout */
+.profile-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+/* Header Decoration */
+.page-header {
+  height: 120px;
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 50%, #0D47A1 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.header-decoration::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.header-decoration::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+/* Content */
+.profile-content {
+  padding: 0 16px 20px;
+  margin-top: -60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* User Card */
+.user-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.user-avatar-wrapper {
+  margin-bottom: 16px;
+}
+
+.avatar-container {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
+  position: relative;
+}
+
+.avatar-container::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  padding: 4px;
+  background: linear-gradient(135deg, #42A5F5, #1976D2);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0.3;
+}
+
+.avatar-icon {
+  color: white;
+}
+
+.user-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.user-username {
+  font-size: 15px;
+  color: #1976D2;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.user-login-time {
+  font-size: 12px;
+  color: #999;
+  font-weight: 400;
+}
+
+/* Stats Card */
+.stats-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stats-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-title::before {
+  content: '';
+  width: 3px;
+  height: 18px;
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  color: white;
+}
+
+.primary-bg {
+  background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
+}
+
+.orange-bg {
+  background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+}
+
+.red-bg {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+.logout-btn {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: white;
+}
+
+.logout-btn:hover {
+  box-shadow: 0 4px 16px rgba(244, 67, 54, 0.4);
+  transform: translateY(-2px);
+}
+
+.logout-btn-full {
+  padding: 18px 24px;
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  
+  .stat-icon-wrapper {
+    margin-bottom: 0;
+  }
+}
+</style>

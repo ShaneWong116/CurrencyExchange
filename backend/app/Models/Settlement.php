@@ -59,6 +59,14 @@ class Settlement extends Model
     }
 
     /**
+     * 关联到本金调整记录
+     */
+    public function capitalAdjustments()
+    {
+        return $this->hasMany(CapitalAdjustment::class);
+    }
+
+    /**
      * 获取下一个结余序号
      */
     public static function getNextSequenceNumber()

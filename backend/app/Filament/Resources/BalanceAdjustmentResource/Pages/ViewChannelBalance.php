@@ -49,7 +49,7 @@ class ViewChannelBalance extends Page implements HasTable, HasInfolists
                 ->url(BalanceAdjustmentResource::getUrl('index')),
             
             Action::make('create_adjustment')
-                ->label('创建调整')
+                ->label('修改余额')
                 ->icon('heroicon-o-plus')
                 ->url(fn (): string => BalanceAdjustmentResource::getUrl('create', ['channel' => $this->channel->id]))
                 ->visible(fn () => \Illuminate\Support\Facades\Gate::allows('create', \App\Models\BalanceAdjustment::class)),

@@ -50,13 +50,17 @@ class CreateBalanceAdjustment extends CreateRecord
         
         $balance->current_balance = $record->after_amount;
         $balance->save();
-        
+    }
+
+    protected function getRedirectUrl(): string
+    {
         // 如果是从渠道详情页创建的，返回到渠道详情页
         $channelId = request()->query('channel');
         if ($channelId) {
-            $this->redirect($this->getResource()::getUrl('channel', ['channel' => $channelId]));
-        } else {
-            $this->redirect($this->getResource()::getUrl('index'));
+            return $this->getResource()::getUrl('channel', ['channel' => $channelId]);
         }
+        
+        // 默认返回列表页
+        return $this->getResource()::getUrl('index');
     }
 }

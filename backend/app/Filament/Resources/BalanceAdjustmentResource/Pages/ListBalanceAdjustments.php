@@ -76,6 +76,9 @@ class ListBalanceAdjustments extends ListRecords
                     ->badge()
                     ->color('info'),
             ])
+            ->recordUrl(fn (Channel $record): string => 
+                BalanceAdjustmentResource::getUrl('channel', ['channel' => $record->id])
+            )
             ->actions([
                 Tables\Actions\Action::make('view_details')
                     ->label('查看详情')

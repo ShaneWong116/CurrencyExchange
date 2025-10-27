@@ -18,6 +18,7 @@ class SettingSeeder extends Seeder
             ['key_name' => 'image_formats', 'key_value' => '["jpg","jpeg","png","gif"]', 'description' => '允许的图片格式', 'type' => 'json'],
             ['key_name' => 'exchange_rate_precision', 'key_value' => '5', 'description' => '汇率精度（小数位数）', 'type' => 'number'],
             ['key_name' => 'log_retention_days', 'key_value' => '90', 'description' => '日志保存天数', 'type' => 'number'],
+            ['key_name' => 'system_capital_hkd', 'key_value' => '0', 'description' => '系统初始本金（港币）', 'type' => 'number'],
         ];
 
         foreach ($settings as $setting) {

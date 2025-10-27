@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Setting;
 use App\Models\Channel;
+use App\Models\CapitalAdjustment;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -18,8 +19,8 @@ class BalanceOverview extends BaseWidget
     
     protected function getStats(): array
     {
-        // 获取本金（从系统设置中获取）
-        $capital = Setting::get('capital', 0);
+        // 获取本金（从本金调整记录中获取最新值）
+        $capital = CapitalAdjustment::getCurrentCapital();
         
         // 获取港币结余（从系统设置中获取）
         $hkdBalance = Setting::get('hkd_balance', 0);
@@ -36,19 +37,31 @@ class BalanceOverview extends BaseWidget
                 ->description('当前系统本金')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('primary')
-                ->chart([7, 4, 5, 6, 7, 8, 9]),
+                ->chart([7, 4, 5, 6, 7, 8, 9])
+                ->url(\App\Filament\Resources\CapitalAdjustmentResource::getUrl('index'))
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition'
+                ]),
                 
             Stat::make('人民币余额', '¥' . number_format($rmbBalance, 2))
                 ->description('各渠道余额汇总')
                 ->descriptionIcon('heroicon-m-currency-yen')
                 ->color('success')
-                ->chart([4, 5, 6, 7, 6, 7, 8]),
+                ->chart([4, 5, 6, 7, 6, 7, 8])
+                ->url(\App\Filament\Resources\BalanceAdjustmentResource::getUrl('index'))
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition'
+                ]),
                 
             Stat::make('港币余额', 'HK$' . number_format($hkdBalance, 2))
                 ->description('当前港币结余')
                 ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color('info')
-                ->chart([5, 6, 5, 7, 8, 7, 9]),
+                ->chart([5, 6, 5, 7, 8, 7, 9])
+                ->url(\App\Filament\Resources\BalanceAdjustmentResource::getUrl('index'))
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition'
+                ]),
         ];
     }
 }

@@ -35,13 +35,13 @@ class FilamentServiceProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->resources([
                 \App\Filament\Resources\TransactionResource::class,
                 \App\Filament\Resources\ChannelResource::class,
                 \App\Filament\Resources\SettlementResource::class,
                 \App\Filament\Resources\TransactionDraftResource::class,
                 \App\Filament\Resources\BalanceAdjustmentResource::class,
+                \App\Filament\Resources\CapitalAdjustmentResource::class,
                 \App\Filament\Resources\ImageResource::class,
                 \App\Filament\Resources\FieldUserResource::class,
                 \App\Filament\Resources\LocationResource::class,
@@ -55,6 +55,7 @@ class FilamentServiceProvider extends PanelProvider
             ->widgets([
                 \App\Filament\Widgets\PrimaryNetInflow::class,
                 \App\Filament\Widgets\StatsOverview::class,
+                \App\Filament\Widgets\BalanceOverview::class,
                 \App\Filament\Widgets\SettlementStatsWidget::class,
                 \App\Filament\Widgets\ChannelOverview::class,
                 \App\Filament\Widgets\LocationOverview::class,
