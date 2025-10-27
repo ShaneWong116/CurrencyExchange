@@ -311,7 +311,11 @@ export default {
       }
     },
     async fetchTransactions(reset = true) {
-      const params = { per_page: 20, page: this.page }
+      const params = { 
+        per_page: 20, 
+        page: this.page,
+        settlement_status: 'unsettled' // 只查询未结余的记录
+      }
       this.loading = true
       try {
         const res = await api.get('/transactions', { params })

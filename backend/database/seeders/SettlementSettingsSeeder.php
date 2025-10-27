@@ -39,5 +39,24 @@ class SettlementSettingsSeeder extends Seeder
         } else {
             $this->command->info('→ 港币结余已存在,跳过初始化');
         }
+
+        // 设置结余确认密码(如果不存在)
+        $passwordExists = Setting::where('key_name', 'settlement_password')->exists();
+        if (!$passwordExists) {
+            // 默认密码: 123456
+            $defaultPassword = '123456';
+            $hashedPassword = password_hash($defaultPassword, PASSWORD_DEFAULT);
+            
+            Setting::create([
+                'key_name' => 'settlement_password',
+                'key_value' => $hashedPassword,
+                'description' => '结余确认密码(哈希加密)',
+                'type' => 'string',
+            ]);
+            $this->command->info('✓ 已初始化结余密码: 默认为 123456 (请在系统设置中修改)');
+            $this->command->warn('⚠ 重要: 请立即在后台"系统设置"中修改结余密码!');
+        } else {
+            $this->command->info('→ 结余密码已存在,跳过初始化');
+        }
     }
 }

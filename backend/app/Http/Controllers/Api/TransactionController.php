@@ -41,6 +41,11 @@ class TransactionController extends Controller
             $query->where('transaction_label', $request->transaction_label);
         }
 
+        // 按结余状态筛选
+        if ($request->has('settlement_status')) {
+            $query->where('settlement_status', $request->settlement_status);
+        }
+
         $transactions = $query->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
