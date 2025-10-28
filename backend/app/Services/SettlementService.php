@@ -103,23 +103,15 @@ class SettlementService
         // 出账利润 = 出账港币总额 - 出账港币成本(四舍五入到个位)
         $outgoingProfit = round($outcomeHkdTotal - $outcomeHkdCost, 0, PHP_ROUND_HALF_UP);
 
-        // 6. 计算即时买断利润
+        // 6. 汇总即时买断利润（直接从交易记录中获取）
         $unsettledInstantTransactions = Transaction::unsettled()
             ->where('type', 'instant_buyout')
             ->get();
         
-        $instantProfit = 0;
+        // 即时买断利润 = 所有未结余即时买断交易的利润之和
+        $instantProfit = $unsettledInstantTransactions->sum('instant_profit');
         $instantHkdCost = $unsettledInstantTransactions->sum('hkd_amount');
         $instantRmbTotal = $unsettledInstantTransactions->sum('rmb_amount');
-        $instantHkdSellAmount = 0;
-        
-        if ($unsettledInstantTransactions->count() > 0 && $instantBuyoutRate > 0) {
-            // 港币卖出金额 = 人民币之和 ÷ 即时买断汇率（四舍五入到十位）
-            $instantHkdSellAmount = round($instantRmbTotal / $instantBuyoutRate / 10) * 10;
-            
-            // 即时买断利润 = 港币卖出金额 - 港币成本(四舍五入到个位)
-            $instantProfit = round($instantHkdSellAmount - $instantHkdCost, 0, PHP_ROUND_HALF_UP);
-        }
 
         // 7. 总利润(四舍五入到个位)
         $totalProfit = round($outgoingProfit + $instantProfit, 0, PHP_ROUND_HALF_UP);
@@ -147,10 +139,8 @@ class SettlementService
             'profit' => $totalProfit,
             
             // 即时买断相关
-            'instant_buyout_rate' => $instantBuyoutRate,
             'instant_hkd_cost' => round($instantHkdCost, 2),
             'instant_rmb_total' => round($instantRmbTotal, 2),
-            'instant_hkd_sell_amount' => round($instantHkdSellAmount, 2),
             
             // 预期结余后状态（不含其他支出）
             'expected_new_capital' => round($expectedNewCapital, 2),
@@ -168,7 +158,6 @@ class SettlementService
             
             // 是否可以执行结余
             'can_settle' => ($unsettledIncomeTransactions->count() + $unsettledOutcomeTransactions->count() + $unsettledInstantTransactions->count()) > 0,
-            'needs_instant_rate' => $unsettledInstantTransactions->count() > 0,
         ];
     }
 
@@ -177,14 +166,14 @@ class SettlementService
      * 
      * @param string $password 确认密码
      * @param array $expenses 其他支出明细 [['item_name' => '薪金', 'amount' => 100], ...]
-     * @param float|null $instantBuyoutRate 即时买断汇率（如有即时买断交易时需要传入）
      * @param string|null $notes 备注
      * @param int|null $userId 执行结余的用户ID
+     * @param string $userType 用户类型: 'admin' 或 'field'
      * @return Settlement
      */
-    public function execute($password, array $expenses = [], $instantBuyoutRate = null, ?string $notes = null, $userId = null)
+    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin')
     {
-        return DB::transaction(function () use ($password, $expenses, $instantBuyoutRate, $notes, $userId) {
+        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType) {
             // 1. 检查今日是否已结余
             if (Settlement::hasSettledToday()) {
                 throw new Exception('今日已完成结余，无法重复操作');
@@ -195,8 +184,8 @@ class SettlementService
                 throw new Exception('确认密码错误');
             }
             
-            // 3. 获取预览数据
-            $preview = $this->getPreview($instantBuyoutRate);
+            // 3. 获取预览数据（即时买断利润已在录入时计算）
+            $preview = $this->getPreview();
             
             // 4. 业务校验
             if (!$preview['can_settle']) {
@@ -205,11 +194,6 @@ class SettlementService
             
             if ($preview['settlement_rate'] <= 0) {
                 throw new Exception('结余汇率计算异常，请检查港币结余是否正确');
-            }
-            
-            // 如果有即时买断交易但未提供汇率
-            if ($preview['needs_instant_rate'] && (!$instantBuyoutRate || $instantBuyoutRate <= 0)) {
-                throw new Exception('存在即时买断交易，请提供即时买断汇率');
             }
             
             // 5. 计算其他支出总额
@@ -221,6 +205,7 @@ class SettlementService
             // 6. 计算结余后的数据
             $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal;
             $newHkdBalance = $preview['current_hkd_balance'] + $preview['profit'];
+            // $newHkdBalance = $preview['current_hkd_balance'] + $preview['outgoing_profit'] - $otherExpensesTotal;
             
             // 7. 获取下一个序号
             $sequenceNumber = Settlement::getNextSequenceNumber();
@@ -233,7 +218,7 @@ class SettlementService
                 'profit' => $preview['profit'],
                 'outgoing_profit' => $preview['outgoing_profit'],
                 'instant_profit' => $preview['instant_profit'],
-                'instant_buyout_rate' => $instantBuyoutRate,
+                'instant_buyout_rate' => null, // 不再使用统一汇率，每笔交易已记录自己的利润
                 'other_expenses_total' => $otherExpensesTotal,
                 'new_capital' => $newCapital,
                 'new_hkd_balance' => $newHkdBalance,
@@ -242,6 +227,7 @@ class SettlementService
                 'sequence_number' => $sequenceNumber,
                 'notes' => $notes,
                 'created_by' => $userId,
+                'created_by_type' => $userType, // 保存用户类型
             ]);
             
             // 9. 保存其他支出明细
@@ -298,7 +284,7 @@ class SettlementService
      */
     public function getDetail($settlementId)
     {
-        $settlement = Settlement::with('expenses', 'transactions')->findOrFail($settlementId);
+        $settlement = Settlement::with('expenses', 'transactions', 'creator')->findOrFail($settlementId);
         
         return [
             'settlement' => $settlement,
@@ -306,6 +292,8 @@ class SettlementService
             'transactions_count' => $settlement->transactions->count(),
             'income_transactions_count' => $settlement->transactions->where('type', 'income')->count(),
             'outcome_transactions_count' => $settlement->transactions->where('type', 'outcome')->count(),
+            'instant_buyout_transactions_count' => $settlement->transactions->where('type', 'instant_buyout')->count(),
+            'creator_name' => $settlement->creator_name, // 使用模型的 accessor
         ];
     }
 
@@ -314,7 +302,7 @@ class SettlementService
      */
     public function getHistory($page = 1, $perPage = 20)
     {
-        return Settlement::with('expenses')
+        return Settlement::with('expenses', 'creator')
             ->orderByDate('desc')
             ->paginate($perPage, ['*'], 'page', $page);
     }

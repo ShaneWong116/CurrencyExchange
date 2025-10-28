@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // 设置默认字符串长度
         Schema::defaultStringLength(191);
+        
+        // 注册多态关联类型映射
+        Relation::enforceMorphMap([
+            'admin' => \App\Models\User::class,
+            'field' => \App\Models\FieldUser::class,
+        ]);
         
         // 强制HTTPS (生产环境)
         if (app()->environment('production')) {

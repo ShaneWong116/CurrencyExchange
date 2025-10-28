@@ -12,7 +12,7 @@ use Filament\Tables\Table;
 class ChannelOverview extends BaseWidget
 {
     protected static ?string $heading = '今日渠道汇总';
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
     protected int | string | array $columnSpan = 'full';
 
     protected function getTableQuery(): Builder

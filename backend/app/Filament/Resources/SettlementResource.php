@@ -60,8 +60,22 @@ class SettlementResource extends Resource
                     ->money('HKD')
                     ->sortable(),
                 
+                Tables\Columns\TextColumn::make('outgoing_profit')
+                    ->label('出账利润')
+                    ->money('HKD')
+                    ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                
+                Tables\Columns\TextColumn::make('instant_profit')
+                    ->label('即时买断利润')
+                    ->money('HKD')
+                    ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                
                 Tables\Columns\TextColumn::make('profit')
-                    ->label('利润')
+                    ->label('总利润')
                     ->money('HKD')
                     ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger')
                     ->sortable(),
@@ -81,6 +95,13 @@ class SettlementResource extends Resource
                     ->numeric(decimalPlaces: 3)
                     ->sortable(),
                 
+                Tables\Columns\TextColumn::make('instant_buyout_rate')
+                    ->label('即时买断汇率')
+                    ->numeric(decimalPlaces: 3)
+                    ->placeholder('-')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                
                 Tables\Columns\TextColumn::make('rmb_balance_total')
                     ->label('人民币余额')
                     ->money('CNY')
@@ -90,6 +111,14 @@ class SettlementResource extends Resource
                     ->label('关联交易数')
                     ->counts('transactions')
                     ->sortable(),
+                
+                Tables\Columns\TextColumn::make('creator_name')
+                    ->label('操作人')
+                    ->sortable()
+                    ->searchable()
+                    ->getStateUsing(function (Settlement $record) {
+                        return $record->creator_name;
+                    }),
                 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('结余时间')
@@ -138,6 +167,34 @@ class SettlementResource extends Resource
                             ->label('结余汇率')
                             ->badge()
                             ->color('info'),
+                        
+                        Infolists\Components\TextEntry::make('creator_name')
+                            ->label('操作人')
+                            ->badge()
+                            ->color('gray')
+                            ->getStateUsing(function (Settlement $record) {
+                                return $record->creator_name;
+                            }),
+                    ])
+                    ->columns(4),
+
+                Infolists\Components\Section::make('利润明细')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('outgoing_profit')
+                            ->label('出账利润')
+                            ->money('HKD')
+                            ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger'),
+                        
+                        Infolists\Components\TextEntry::make('instant_profit')
+                            ->label('即时买断利润')
+                            ->money('HKD')
+                            ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger'),
+                        
+                        Infolists\Components\TextEntry::make('profit')
+                            ->label('总利润')
+                            ->money('HKD')
+                            ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger')
+                            ->weight('bold'),
                     ])
                     ->columns(3),
 
@@ -146,12 +203,6 @@ class SettlementResource extends Resource
                         Infolists\Components\TextEntry::make('previous_capital')
                             ->label('结余前本金')
                             ->money('HKD')
-                            ->size('lg'),
-                        
-                        Infolists\Components\TextEntry::make('profit')
-                            ->label('利润')
-                            ->money('HKD')
-                            ->color(fn (string $state): string => $state >= 0 ? 'success' : 'danger')
                             ->size('lg'),
                         
                         Infolists\Components\TextEntry::make('other_expenses_total')
@@ -166,7 +217,7 @@ class SettlementResource extends Resource
                             ->size('lg')
                             ->weight('bold'),
                     ])
-                    ->columns(4),
+                    ->columns(3),
 
                 Infolists\Components\Section::make('港币结余变化')
                     ->schema([
@@ -220,8 +271,14 @@ class SettlementResource extends Resource
                             ->state(fn (Settlement $record) => $record->transactions->where('type', 'outcome')->count())
                             ->badge()
                             ->color('warning'),
+                        
+                        Infolists\Components\TextEntry::make('instant_buyout_count')
+                            ->label('即时买断交易数')
+                            ->state(fn (Settlement $record) => $record->transactions->where('type', 'instant_buyout')->count())
+                            ->badge()
+                            ->color('info'),
                     ])
-                    ->columns(3),
+                    ->columns(4),
 
                 Infolists\Components\Section::make('备注')
                     ->schema([

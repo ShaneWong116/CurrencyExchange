@@ -278,8 +278,18 @@ watch(() => [form.value.rmbAmount, form.value.hkdAmount], () => {
 
 const toBackendPayload = () => {
   // 统一转换为后端字段
-  const mappedType = transactionType.value === 'deposit' ? 'income' : transactionType.value === 'withdrawal' ? 'outcome' : 'exchange'
-  return {
+  let mappedType
+  if (transactionType.value === 'deposit') {
+    mappedType = 'income'
+  } else if (transactionType.value === 'withdrawal') {
+    mappedType = 'outcome'
+  } else if (transactionType.value === 'instant-buyout') {
+    mappedType = 'instant_buyout'
+  } else {
+    mappedType = 'exchange'
+  }
+  
+  const payload = {
     type: mappedType,
     rmb_amount: form.value.rmbAmount,
     hkd_amount: form.value.hkdAmount,
@@ -288,6 +298,24 @@ const toBackendPayload = () => {
     channel_id: form.value.channelId,
     notes: form.value.remarks
   }
+  
+  // 如果是即时买断交易，计算利润（向上取整到十位）
+  if (mappedType === 'instant_buyout' && form.value.instantRate > 0) {
+    const rmbAmount = parseFloat(form.value.rmbAmount) || 0
+    const hkdCost = parseFloat(form.value.hkdAmount) || 0
+    const instantRate = parseFloat(form.value.instantRate) || 0
+    
+    // 港币卖出金额 = 人民币金额 ÷ 即时买断汇率
+    const hkdSellAmount = rmbAmount / instantRate
+    // 利润 = 卖出金额 - 成本
+    const profit = hkdSellAmount - hkdCost
+    // 向上取整到十位（例如 118 -> 120）
+    const roundedProfit = Math.ceil(profit / 10) * 10
+    
+    payload.instant_profit = roundedProfit
+  }
+  
+  return payload
 }
 const addFiles = (files) => {
   const list = Array.from(files || [])
@@ -349,7 +377,8 @@ const loadDraftIfEditing = () => {
   if (!transactionType.value) {
     if (found.type === 'income') transactionType.value = 'deposit'
     else if (found.type === 'outcome') transactionType.value = 'withdrawal'
-    else if (found.type === 'exchange') transactionType.value = 'instant-buyout'
+    else if (found.type === 'instant_buyout') transactionType.value = 'instant-buyout'
+    else if (found.type === 'exchange') transactionType.value = 'exchange'
   }
 }
 
@@ -379,32 +408,8 @@ const onSubmit = async () => {
 
     // 离线模式：加入待提交队列
     if (!navigator.onLine) {
-      if (transactionType.value === 'instant-buyout') {
-        const depositRecord = {
-          type: 'income',
-          rmb_amount: data.rmb_amount,
-          hkd_amount: data.hkd_amount,
-          exchange_rate: data.exchange_rate,
-          channel_id: data.channel_id,
-          // location_id 留空，后端将使用人员所属地点
-          notes: data.notes,
-          uuid: uuidv4()
-        }
-        const withdrawalRecord = {
-          type: 'outcome',
-          rmb_amount: data.rmb_amount,
-          hkd_amount: Number((data.rmb_amount / data.instant_rate).toFixed(4)),
-          exchange_rate: data.instant_rate,
-          channel_id: data.channel_id,
-          // location_id 留空，后端将使用人员所属地点
-          notes: data.notes,
-          uuid: uuidv4()
-        }
-        draftStore.addToPendingQueue(depositRecord)
-        draftStore.addToPendingQueue(withdrawalRecord)
-      } else {
-        draftStore.addToPendingQueue({ ...data, uuid: uuidv4() })
-      }
+      // 即时买断也是一条交易记录，type为instant_buyout
+      draftStore.addToPendingQueue({ ...data, uuid: uuidv4() })
       Notify.create({ type: 'info', message: '离线模式：已加入待提交队列', position: 'top' })
       router.push('/home')
       return
@@ -429,6 +434,8 @@ const onSubmit = async () => {
       if (result.success) {
         Notify.create({ type: 'positive', message: '即时买断提交成功', position: 'top' })
         router.push('/home')
+      } else {
+        Notify.create({ type: 'negative', message: result.message || '即时买断提交失败', position: 'top' })
       }
     } else {
       const result = await transactionStore.createTransaction(data)

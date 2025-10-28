@@ -144,16 +144,23 @@ class SettlementController extends Controller
                 ], 422);
             }
 
-            // 获取当前登录用户ID（如果有认证系统）
-            $userId = $request->user() ? $request->user()->id : null;
+            // 获取当前登录用户ID和类型
+            $user = $request->user();
+            $userId = $user ? $user->id : null;
+            
+            // 判断用户类型：FieldUser 表示外勤人员，User 表示后台管理员
+            $userType = 'admin'; // 默认为管理员
+            if ($user && get_class($user) === 'App\Models\FieldUser') {
+                $userType = 'field';
+            }
 
             // 执行结余
             $settlement = $this->settlementService->execute(
                 $request->input('password'),
                 $request->input('expenses', []),
-                $request->input('instant_buyout_rate'),
                 $request->input('notes'),
-                $userId
+                $userId,
+                $userType
             );
 
             // 返回结余详情

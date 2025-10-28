@@ -19,6 +19,7 @@ class Transaction extends Model
         'hkd_amount',
         'exchange_rate',
         'instant_rate',
+        'instant_profit',
         'channel_id',
         'location_id',
         'location',
@@ -35,6 +36,7 @@ class Transaction extends Model
         'hkd_amount' => 'decimal:2',
         'exchange_rate' => 'decimal:5',
         'instant_rate' => 'decimal:5',
+        'instant_profit' => 'decimal:2',
         'submit_time' => 'datetime',
     ];
 

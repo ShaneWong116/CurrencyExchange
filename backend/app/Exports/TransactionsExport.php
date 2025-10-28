@@ -57,7 +57,7 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping, WithSt
             '人民币金额',
             '港币金额',
             '交易汇率',
-            '即时汇率',
+            '即时买断汇率',
             '支付渠道',
             '交易地点',
             '状态',
@@ -133,6 +133,7 @@ class TransactionsExport implements FromQuery, WithHeadings, WithMapping, WithSt
         return match($type) {
             'income' => '入账',
             'outcome' => '出账',
+            'instant_buyout' => '即时买断',
             'exchange' => '兑换',
             default => $type
         };

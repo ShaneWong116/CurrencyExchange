@@ -1,0 +1,40 @@
+
+Deprecated: Dotenv\Repository\RepositoryBuilder::__construct(): Implicitly marking parameter $allowList as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Repository\RepositoryBuilder.php on line 68
+
+Deprecated: Dotenv\Repository\RepositoryBuilder::allowList(): Implicitly marking parameter $allowList as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Repository\RepositoryBuilder.php on line 247
+
+Deprecated: Dotenv\Dotenv::create(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 83
+
+Deprecated: Dotenv\Dotenv::createMutable(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 112
+
+Deprecated: Dotenv\Dotenv::createUnsafeMutable(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 129
+
+Deprecated: Dotenv\Dotenv::createImmutable(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 148
+
+Deprecated: Dotenv\Dotenv::createUnsafeImmutable(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 165
+
+Deprecated: Dotenv\Dotenv::createArrayBacked(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Dotenv.php on line 185
+
+Deprecated: Dotenv\Store\StoreBuilder::__construct(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Store\StoreBuilder.php on line 54
+
+Deprecated: Dotenv\Store\StoreBuilder::fileEncoding(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Store\StoreBuilder.php on line 123
+
+Deprecated: Dotenv\Store\FileStore::__construct(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Store\FileStore.php on line 42
+
+Deprecated: Dotenv\Store\File\Reader::read(): Implicitly marking parameter $fileEncoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Store\File\Reader.php on line 43
+
+Deprecated: Dotenv\Store\File\Reader::readFromFile(): Implicitly marking parameter $encoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Store\File\Reader.php on line 70
+
+Deprecated: Dotenv\Util\Str::utf8(): Implicitly marking parameter $encoding as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Util\Str.php on line 36
+
+Deprecated: Dotenv\Util\Str::substr(): Implicitly marking parameter $length as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Util\Str.php on line 82
+
+Deprecated: Dotenv\Util\Regex::replaceCallback(): Implicitly marking parameter $limit as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Util\Regex.php on line 67
+
+Deprecated: Dotenv\Parser\Entry::__construct(): Implicitly marking parameter $value as nullable is deprecated, the explicit nullable type must be used instead in E:\PROJECT\CurrencyExSystem\CurrencyExSystem\ExchangeSystem\backend\vendor\vlucas\phpdotenv\src\Parser\Entry.php on line 33
+
+In Shell.php line 891:
+                           
+  Unexpected end of input  
+                           
+

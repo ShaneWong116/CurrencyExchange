@@ -29,6 +29,10 @@
             <div class="row items-center q-mb-sm">
               <div class="col">
                 <div class="text-h6">{{ formatDate(settlement.settlement_date) }}</div>
+                <div v-if="settlement.creator_name" class="text-caption text-grey-7 q-mt-xs">
+                  <q-icon name="person" size="14px" class="q-mr-xs" />
+                  操作人: {{ settlement.creator_name }}
+                </div>
                 <div v-if="settlement.notes" class="text-caption text-grey-7">{{ settlement.notes }}</div>
               </div>
               <div class="col-auto">

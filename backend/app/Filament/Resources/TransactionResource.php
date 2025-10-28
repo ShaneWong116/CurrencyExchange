@@ -46,6 +46,7 @@ class TransactionResource extends Resource
                             ->options([
                                 'income' => '入账',
                                 'outcome' => '出账',
+                                'instant_buyout' => '即时买断',
                                 'exchange' => '兑换',
                             ])
                             ->required(),
@@ -84,10 +85,11 @@ class TransactionResource extends Resource
                             ->step(0.00001),
                             
                         Forms\Components\TextInput::make('instant_rate')
-                            ->label('即时汇率')
+                            ->label('即时买断汇率')
                             ->numeric()
                             ->step(0.00001)
-                            ->visible(fn (Forms\Get $get) => $get('type') === 'exchange'),
+                            ->helperText('仅即时买断交易需要填写')
+                            ->visible(fn (Forms\Get $get) => $get('type') === 'instant_buyout'),
                     ])->columns(2),
                     
                 Forms\Components\Section::make('其他信息')
@@ -138,13 +140,15 @@ class TransactionResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'income' => 'success',
                         'outcome' => 'danger',
+                        'instant_buyout' => 'warning',
                         'exchange' => 'primary',
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'income' => '入账',
                         'outcome' => '出账',
-                        'exchange' => '即时买断',
+                        'instant_buyout' => '即时买断',
+                        'exchange' => '兑换',
                         default => $state,
                     }),
                     
@@ -164,6 +168,14 @@ class TransactionResource extends Resource
                     ->label('汇率')
                     ->numeric(5)
                     ->sortable(),
+                    
+                TextColumn::make('instant_rate')
+                    ->label('即时买断汇率')
+                    ->numeric(5)
+                    ->toggleable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->tooltip('仅即时买断交易显示'),
                     
                 TextColumn::make('channel.name')
                     ->label('支付渠道')
@@ -202,7 +214,8 @@ class TransactionResource extends Resource
                     ->options([
                         'income' => '入账',
                         'outcome' => '出账',
-                        'exchange' => '即时买断',
+                        'instant_buyout' => '即时买断',
+                        'exchange' => '兑换',
                     ]),
                     
                 SelectFilter::make('channel')

@@ -22,6 +22,10 @@
           <q-card-section class="bg-primary text-white">
             <div class="text-h5">收入支出表</div>
             <div class="text-subtitle2">日期: {{ formatDate(settlement.settlement_date) }}</div>
+            <div v-if="detail && detail.creator_name" class="text-caption q-mt-xs">
+              <q-icon name="person" size="14px" />
+              结算人: {{ detail.creator_name }}
+            </div>
           </q-card-section>
         </q-card>
 
@@ -152,6 +156,14 @@
                   <q-card-section class="q-pa-sm">
                     <div class="text-h6 text-negative">{{ detail.outcome_transactions_count || 0 }}</div>
                     <div class="text-caption">出账交易</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+              <div class="col">
+                <q-card flat bordered class="text-center">
+                  <q-card-section class="q-pa-sm">
+                    <div class="text-h6 text-orange">{{ detail.instant_buyout_transactions_count || 0 }}</div>
+                    <div class="text-caption">即时买断</div>
                   </q-card-section>
                 </q-card>
               </div>

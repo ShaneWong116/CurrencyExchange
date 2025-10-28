@@ -11,7 +11,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class BalanceOverview extends BaseWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 0;
     
     // 禁用轮询，避免缓存问题
     protected static ?string $pollingInterval = null;

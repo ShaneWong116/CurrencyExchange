@@ -21,6 +21,12 @@ export const useTransactionStore = defineStore('transaction', {
     todayTransactions: (state) => {
       const today = new Date().toISOString().split('T')[0]
       return Array.isArray(state.transactions) ? state.transactions.filter(t => t.created_at && t.created_at.startsWith(today)) : []
+    },
+    // 未结余的交易数量
+    unsettledCount: (state) => {
+      return Array.isArray(state.transactions) 
+        ? state.transactions.filter(t => t.settlement_status === 'unsettled' || !t.settlement_status).length 
+        : 0
     }
   },
 
@@ -109,40 +115,26 @@ export const useTransactionStore = defineStore('transaction', {
 
     async submitInstantBuyout(data) {
       try {
-        const depositRecord = {
-          type: 'income',
+        // 即时买断只创建一条 instant_buyout 类型的交易
+        const instantBuyoutRecord = {
+          type: 'instant_buyout',
           rmb_amount: data.rmb_amount,
           hkd_amount: data.hkd_amount,
           exchange_rate: data.exchange_rate,
+          instant_rate: data.instant_rate,
           channel_id: data.channel_id,
           notes: data.notes,
           uuid: uuidv4()
         }
 
-        const withdrawalRecord = {
-          type: 'outcome',
-          rmb_amount: data.rmb_amount,
-          hkd_amount: Number((data.rmb_amount / data.instant_rate).toFixed(4)),
-          exchange_rate: data.instant_rate,
-          channel_id: data.channel_id,
-          notes: data.notes,
-          uuid: uuidv4()
-        }
+        const response = await api.post('/transactions', instantBuyoutRecord)
+        
+        // 添加到本地列表
+        this.transactions.unshift(response.data.transaction)
 
-        const response = await api.post('/transactions/batch', { transactions: [depositRecord, withdrawalRecord] })
-        const results = response.data.results || []
-        const successCount = results.filter(r => r.status === 'success').length
-
-        Notify.create({
-          type: successCount === 2 ? 'positive' : 'warning',
-          message: `即时买断提交完成，成功 ${successCount}/2 条`,
-          position: 'top'
-        })
-
-        return { success: successCount === 2, results }
+        return { success: true, data: response.data.transaction }
       } catch (error) {
         const message = error.response?.data?.message || '即时买断提交失败'
-        Notify.create({ type: 'negative', message, position: 'top' })
         return { success: false, message }
       }
     }

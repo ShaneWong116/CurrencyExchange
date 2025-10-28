@@ -16,9 +16,6 @@
         <div class="user-details">
           <div class="user-name">{{ authStore.user?.name }}</div>
           <div class="user-username">@{{ authStore.user?.username }}</div>
-          <div class="user-login-time">
-            最后登录: {{ formatTime(authStore.user?.last_login_at) }}
-          </div>
         </div>
       </div>
 
@@ -65,7 +62,7 @@
 
 <script setup>
 import BottomNavigation from '@/components/BottomNavigation.vue'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDraftStore } from '@/stores/draft'
@@ -79,10 +76,18 @@ const transactionStore = useTransactionStore()
 
 // 用户统计
 const userStats = computed(() => ({
-  totalTransactions: transactionStore.transactions.length,
+  totalTransactions: transactionStore.unsettledCount, // 改为未结余交易数
   totalDrafts: draftStore.allDrafts.length,
   pendingCount: draftStore.pendingCount
 }))
+
+// 页面加载时刷新数据
+onMounted(async () => {
+  // 刷新未结余交易数据
+  await transactionStore.fetchTransactions({ settlement_status: 'unsettled' })
+  // 刷新草稿数据
+  await draftStore.fetchDrafts()
+})
 
 // 格式化时间
 const formatTime = (timeString) => {

@@ -26,6 +26,7 @@ class SettingSeeder extends Seeder
             ['key_name' => 'capital', 'key_value' => '0', 'description' => '系统本金(HKD)', 'type' => 'number'],
             ['key_name' => 'hkd_balance', 'key_value' => '0', 'description' => '港币结余(HKD)', 'type' => 'number'],
             ['key_name' => 'settlement_password', 'key_value' => $hashedPassword, 'description' => '结余确认密码(哈希加密)', 'type' => 'string'],
+            ['key_name' => 'cleanup_password', 'key_value' => $hashedPassword, 'description' => '数据清理二次验证密码(哈希加密)', 'type' => 'string'],
         ];
 
         foreach ($settings as $setting) {
@@ -37,5 +38,6 @@ class SettingSeeder extends Seeder
         
         $this->command->info('✓ 系统设置初始化完成');
         $this->command->warn('⚠ 默认结余密码: 123456 (请在后台修改)');
+        $this->command->warn('⚠ 默认数据清理密码: 123456 (请在后台修改)');
     }
 }

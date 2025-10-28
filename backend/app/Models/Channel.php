@@ -69,6 +69,7 @@ class Channel extends Model
         $initialAmount = $yesterdayBalance ? (float) $yesterdayBalance->current_balance : 0.0;
 
         // 今日交易净额（按方向规则）：入账 RMB+、HKD-；出账 RMB-、HKD+
+        // 注意：即时买断交易(instant_buyout)不影响余额，因为是立即买入卖出
         if ($currency === 'RMB') {
             $netExpr = 'SUM(CASE WHEN type = "income" THEN rmb_amount WHEN type = "outcome" THEN -rmb_amount ELSE 0 END) as net';
         } else { // HKD
@@ -76,6 +77,7 @@ class Channel extends Model
         }
         $todayNetFromTransactions = (float) $this->transactions()
             ->whereDate('created_at', $today)
+            ->whereIn('type', ['income', 'outcome']) // 排除即时买断和兑换交易
             ->selectRaw($netExpr)
             ->value('net');
 

@@ -18,6 +18,12 @@ class SettingResource extends Resource
     protected static ?string $modelLabel = '系统设置';
     protected static ?string $pluralModelLabel = '系统设置';
     protected static ?int $navigationSort = 5;
+    
+    // 隐藏导航菜单项,避免与 SystemSettings 页面重复
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function form(Form $form): Form
     {

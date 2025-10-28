@@ -22,12 +22,14 @@ class TransactionExporter extends Exporter
                 ->formatStateUsing(fn (?string $state): ?string => match ($state) {
                     'income' => '入账',
                     'outcome' => '出账',
-                    'exchange' => '即时买断',
+                    'instant_buyout' => '即时买断',
+                    'exchange' => '兑换',
                     default => $state,
                 }),
             ExportColumn::make('rmb_amount')->label('人民币'),
             ExportColumn::make('hkd_amount')->label('港币'),
             ExportColumn::make('exchange_rate')->label('汇率'),
+            ExportColumn::make('instant_rate')->label('即时买断汇率'),
             ExportColumn::make('channel.name')->label('支付渠道'),
             ExportColumn::make('location.name')->label('地点'),
             ExportColumn::make('status')

@@ -56,7 +56,7 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type' => ['required', Rule::in(['income', 'outcome', 'exchange'])],
+            'type' => ['required', Rule::in(['income', 'outcome', 'exchange', 'instant_buyout'])],
             'rmb_amount' => 'required|numeric|min:0',
             'hkd_amount' => 'required|numeric|min:0',
             'exchange_rate' => 'required|numeric|min:0',
@@ -123,7 +123,7 @@ class TransactionController extends Controller
     {
         $request->validate([
             'transactions' => 'required|array',
-            'transactions.*.type' => ['required', Rule::in(['income', 'outcome', 'exchange'])],
+            'transactions.*.type' => ['required', Rule::in(['income', 'outcome', 'exchange', 'instant_buyout'])],
             'transactions.*.rmb_amount' => 'required|numeric|min:0',
             'transactions.*.hkd_amount' => 'required|numeric',
             'transactions.*.exchange_rate' => 'required|numeric|min:0',
@@ -212,7 +212,7 @@ class TransactionController extends Controller
 
         // 统计按交易类型分组的数据
         $byType = [];
-        $types = ['income', 'outcome', 'instant_buy', 'exchange'];
+        $types = ['income', 'outcome', 'instant_buyout', 'exchange'];
         
         foreach ($types as $type) {
             $typeQuery = (clone $base)->where('type', $type);

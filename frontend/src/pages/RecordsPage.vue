@@ -57,8 +57,8 @@
         </div>
         <div 
           class="tab-item" 
-          :class="{ active: filterType === 'instant_buy' }"
-          @click="filterType = 'instant_buy'"
+          :class="{ active: filterType === 'instant_buyout' }"
+          @click="filterType = 'instant_buyout'"
         >
           即时买断
         </div>
@@ -69,7 +69,19 @@
     <section class="transaction-section">
       <div class="section-header">
         <h6 class="section-title">交易明细</h6>
-        <q-btn flat dense icon="refresh" size="sm" @click="refreshTransactions" :loading="loading" />
+        <div class="header-actions">
+          <!-- 结算按钮 -->
+          <button 
+            class="settlement-btn-compact" 
+            :class="{ 'settlement-btn-disabled': hasSettledToday }"
+            :disabled="hasSettledToday"
+            @click="openSettlementDialog"
+          >
+            <q-icon :name="hasSettledToday ? 'check_circle' : 'account_balance'" size="16px" />
+            <span>{{ hasSettledToday ? '已结算' : '结算' }}</span>
+          </button>
+          <q-btn flat dense icon="refresh" size="sm" @click="refreshTransactions" :loading="loading" />
+        </div>
       </div>
 
       <div class="transaction-list">
@@ -95,6 +107,13 @@
               <span class="amount-cny-highlight">¥{{ formatAmount(t.rmb_amount) }}</span>
               <q-icon name="arrow_forward" size="14px" class="arrow-icon" />
               <span class="amount-hkd-highlight">HK${{ formatAmount(t.hkd_amount) }}</span>
+            </div>
+            
+            <!-- 即时买断汇率 -->
+            <div v-if="t.type === 'instant_buyout' && t.instant_rate" class="instant-rate-row">
+              <q-icon name="bolt" size="14px" class="rate-icon" />
+              <span class="rate-label">即时买断汇率:</span>
+              <span class="rate-value">{{ Number(t.instant_rate).toFixed(3) }}</span>
             </div>
             
             <div class="transaction-footer-row">
@@ -132,6 +151,194 @@
       </div>
     </section>
 
+    <!-- 结算对话框 -->
+    <q-dialog v-model="showSettlementDialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
+      <q-card class="settlement-dialog">
+        <!-- 对话框头部 -->
+        <q-card-section class="dialog-header">
+          <div class="dialog-title">
+            <q-icon name="account_balance" size="28px" />
+            <span>每日结算</span>
+          </div>
+          <q-btn flat round dense icon="close" @click="closeSettlementDialog" color="white" />
+        </q-card-section>
+
+        <!-- 步骤1: 结算预览 -->
+        <q-card-section v-if="settlementStep === 'preview'" class="settlement-content">
+          <div v-if="loadingPreview" class="loading-state">
+            <q-spinner color="primary" size="50px" />
+            <div class="loading-text">加载结算数据...</div>
+          </div>
+
+          <div v-else-if="previewData" class="preview-container">
+            <!-- 当前状态卡片 -->
+            <div class="preview-card current-state">
+              <div class="card-header">
+                <q-icon name="info" size="20px" />
+                <span>当前状态</span>
+              </div>
+              <div class="data-row">
+                <span class="label">原本金</span>
+                <span class="value primary">HK$ {{ formatAmount(previewData.previous_capital) }}</span>
+              </div>
+              <div class="data-row">
+                <span class="label">港币余额</span>
+                <span class="value">HK$ {{ formatAmount(previewData.current_hkd_balance) }}</span>
+              </div>
+              <div class="data-row">
+                <span class="label">人民币结余</span>
+                <span class="value">¥ {{ formatAmount(previewData.rmb_balance_total) }}</span>
+              </div>
+              <div class="data-row">
+                <span class="label">结算汇率</span>
+                <span class="value rate">{{ formatRate(previewData.settlement_rate) }}</span>
+              </div>
+            </div>
+
+            <!-- 利润明细卡片 -->
+            <div class="preview-card profit-detail">
+              <div class="card-header">
+                <q-icon name="trending_up" size="20px" />
+                <span>利润明细</span>
+              </div>
+              <div class="data-row highlight">
+                <span class="label">出账利润</span>
+                <span class="value profit">+HK$ {{ formatInteger(previewData.outgoing_profit) }}</span>
+              </div>
+              <div class="data-row highlight">
+                <span class="label">即时买断利润</span>
+                <span class="value profit">+HK$ {{ formatInteger(previewData.instant_profit) }}</span>
+              </div>
+              <div class="divider"></div>
+              <div class="data-row total">
+                <span class="label">总利润</span>
+                <span class="value profit-total">+HK$ {{ formatInteger(previewData.profit) }}</span>
+              </div>
+            </div>
+
+            <!-- 交易统计卡片 -->
+            <div class="preview-card transaction-stats">
+              <div class="card-header">
+                <q-icon name="receipt" size="20px" />
+                <span>交易统计</span>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-value income">{{ previewData.unsettled_income_count || 0 }}</div>
+                  <div class="stat-label">入账笔数</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value outcome">{{ previewData.unsettled_outcome_count || 0 }}</div>
+                  <div class="stat-label">出账笔数</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value instant">{{ previewData.unsettled_instant_count || 0 }}</div>
+                  <div class="stat-label">即时买断</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 结算后状态卡片 -->
+            <div class="preview-card result-state">
+              <div class="card-header">
+                <q-icon name="check_circle" size="20px" />
+                <span>结算后状态</span>
+              </div>
+              <div class="data-row result">
+                <span class="label">新本金</span>
+                <span class="value new-capital">HK$ {{ formatAmount(previewData.expected_new_capital) }}</span>
+              </div>
+              <div class="data-row result">
+                <span class="label">新港币余额</span>
+                <span class="value">HK$ {{ formatAmount(previewData.expected_new_hkd_balance) }}</span>
+              </div>
+            </div>
+
+            <!-- 警告提示 -->
+            <div class="warning-box">
+              <q-icon name="warning" size="20px" />
+              <span>结算后今日将无法再次结算，请确认数据无误后继续</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <!-- 步骤2: 密码输入 -->
+        <q-card-section v-if="settlementStep === 'password'" class="settlement-content">
+          <div class="password-container">
+            <div class="password-header">
+              <q-icon name="lock" size="48px" color="primary" />
+              <h6>请输入结算密码</h6>
+              <p>为确保操作安全，请输入结算确认密码</p>
+            </div>
+
+            <q-input
+              v-model="settlementPassword"
+              :type="showPassword ? 'text' : 'password'"
+              label="结算密码"
+              outlined
+              class="password-input"
+              @keyup.enter="confirmSettlement"
+            >
+              <template v-slot:prepend>
+                <q-icon name="lock" />
+              </template>
+              <template v-slot:append>
+                <q-icon
+                  :name="showPassword ? 'visibility_off' : 'visibility'"
+                  class="cursor-pointer"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </q-input>
+
+            <div v-if="passwordError" class="error-message">
+              <q-icon name="error" size="16px" />
+              <span>{{ passwordError }}</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <!-- 底部操作按钮 -->
+        <q-card-actions class="dialog-actions">
+          <q-btn
+            v-if="settlementStep === 'preview'"
+            flat
+            label="取消"
+            color="grey-7"
+            @click="closeSettlementDialog"
+            class="action-btn"
+          />
+          <q-btn
+            v-if="settlementStep === 'password'"
+            flat
+            label="返回"
+            color="grey-7"
+            @click="settlementStep = 'preview'"
+            class="action-btn"
+          />
+          <q-btn
+            v-if="settlementStep === 'preview'"
+            unelevated
+            label="继续"
+            color="primary"
+            @click="goToPasswordStep"
+            :disable="!previewData || !previewData.can_settle"
+            class="action-btn primary-btn"
+          />
+          <q-btn
+            v-if="settlementStep === 'password'"
+            unelevated
+            label="确认结算"
+            color="orange"
+            @click="confirmSettlement"
+            :loading="isSubmittingSettlement"
+            :disable="!settlementPassword"
+            class="action-btn confirm-btn"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <BottomNavigation />
   </q-page>
 </template>
@@ -160,7 +367,17 @@ export default {
       page: 1,
       hasMore: true,
       loading: false,
-      filterType: 'all'
+      filterType: 'all',
+      // 结算相关
+      hasSettledToday: false,
+      showSettlementDialog: false,
+      settlementStep: 'preview', // 'preview' | 'password'
+      loadingPreview: false,
+      previewData: null,
+      settlementPassword: '',
+      showPassword: false,
+      passwordError: '',
+      isSubmittingSettlement: false
     }
   },
   computed: {
@@ -175,16 +392,19 @@ export default {
     const auth = useAuthStore()
     this.userName = auth.user?.name || ''
 
-    await this.fetchBalanceOverview()
-    await this.fetchStats()
-    await this.fetchTransactions()
+    await Promise.all([
+      this.fetchBalanceOverview(),
+      this.fetchStats(),
+      this.fetchTransactions(),
+      this.checkTodaySettlement()
+    ])
   },
   methods: {
     getCurrentCount() {
       if (this.filterType === 'all') {
         return this.stats.income.count + this.stats.outcome.count + this.stats.instant.count
       }
-      const key = this.filterType === 'instant_buy' ? 'instant' : this.filterType
+      const key = this.filterType === 'instant_buyout' ? 'instant' : this.filterType
       return this.stats[key]?.count || 0
     },
     async fetchBalanceOverview() {
@@ -205,7 +425,7 @@ export default {
       const labels = {
         'income': '入账',
         'outcome': '出账',
-        'instant_buy': '即时买断',
+        'instant_buyout': '即时买断',
         'exchange': '兑换'
       }
       return labels[type] || type
@@ -251,7 +471,7 @@ export default {
       const colors = {
         'income': 'green',
         'outcome': 'orange',
-        'instant_buy': 'purple',
+        'instant_buyout': 'purple',
         'exchange': 'blue'
       }
       return colors[type] || 'grey'
@@ -296,7 +516,7 @@ export default {
                   hkd: Number(stat.hkd_amount) || 0,
                   count: Number(stat.count) || 0
                 }
-              } else if (type === 'instant_buy') {
+              } else if (type === 'instant_buyout') {
                 this.stats.instant = {
                   cny: Number(stat.rmb_amount) || 0,
                   hkd: Number(stat.hkd_amount) || 0,
@@ -366,7 +586,7 @@ export default {
       const icons = {
         'income': 'account_balance_wallet',
         'outcome': 'account_balance_wallet',
-        'instant_buy': 'swap_horiz',
+        'instant_buyout': 'swap_horiz',
         'exchange': 'compare_arrows'
       }
       return icons[type] || 'account_balance_wallet'
@@ -375,7 +595,7 @@ export default {
       const colors = {
         'income': 'positive',
         'outcome': 'negative',
-        'instant_buy': 'purple',
+        'instant_buyout': 'purple',
         'exchange': 'blue'
       }
       return colors[type] || 'grey'
@@ -390,10 +610,138 @@ export default {
       const classes = {
         'income': 'icon-income',
         'outcome': 'icon-outcome',
-        'instant_buy': 'icon-instant',
+        'instant_buyout': 'icon-instant',
         'exchange': 'icon-exchange'
       }
       return classes[type] || 'icon-default'
+    },
+    formatInteger(value) {
+      return Math.round(parseFloat(value || 0)).toString()
+    },
+    formatRate(value) {
+      return parseFloat(value || 0).toFixed(3)
+    },
+    // 结算相关方法
+    async checkTodaySettlement() {
+      try {
+        const res = await api.get('/settlements/check-today')
+        if (res.data?.success) {
+          this.hasSettledToday = res.data.data.settled || false
+        }
+      } catch (error) {
+        console.error('检查今日结算状态失败:', error)
+      }
+    },
+    async openSettlementDialog() {
+      if (this.hasSettledToday) {
+        this.$q.notify({
+          type: 'warning',
+          message: '今日已完成结算',
+          position: 'top'
+        })
+        return
+      }
+      
+      this.showSettlementDialog = true
+      this.settlementStep = 'preview'
+      this.settlementPassword = ''
+      this.passwordError = ''
+      await this.loadSettlementPreview()
+    },
+    async loadSettlementPreview() {
+      this.loadingPreview = true
+      try {
+        const res = await api.get('/settlements/preview')
+        if (res.data?.success) {
+          this.previewData = res.data.data
+          
+          if (!this.previewData.can_settle) {
+            this.$q.notify({
+              type: 'warning',
+              message: '当前没有未结算的交易，无法执行结算',
+              position: 'top'
+            })
+          }
+        }
+      } catch (error) {
+        console.error('获取结算预览失败:', error)
+        this.$q.notify({
+          type: 'negative',
+          message: '获取结算数据失败',
+          caption: error.response?.data?.message || error.message,
+          position: 'top'
+        })
+      } finally {
+        this.loadingPreview = false
+      }
+    },
+    goToPasswordStep() {
+      if (!this.previewData || !this.previewData.can_settle) {
+        return
+      }
+      this.settlementStep = 'password'
+      this.passwordError = ''
+    },
+    async confirmSettlement() {
+      if (!this.settlementPassword) {
+        this.passwordError = '请输入结算密码'
+        return
+      }
+      
+      this.isSubmittingSettlement = true
+      this.passwordError = ''
+      
+      try {
+        const res = await api.post('/settlements', {
+          password: this.settlementPassword,
+          expenses: [],
+          notes: `外勤端结算 - ${this.userName}`
+        })
+        
+        if (res.data?.success) {
+          this.$q.notify({
+            type: 'positive',
+            message: '结算成功',
+            caption: '今日结算已完成',
+            position: 'top'
+          })
+          
+          this.closeSettlementDialog()
+          this.hasSettledToday = true
+          
+          // 刷新页面数据
+          await Promise.all([
+            this.fetchBalanceOverview(),
+            this.fetchStats(),
+            this.fetchTransactions(true)
+          ])
+        }
+      } catch (error) {
+        console.error('结算失败:', error)
+        const errorMsg = error.response?.data?.message || error.message
+        
+        if (errorMsg.includes('密码')) {
+          this.passwordError = '密码错误，请重新输入'
+        } else {
+          this.passwordError = errorMsg
+        }
+        
+        this.$q.notify({
+          type: 'negative',
+          message: '结算失败',
+          caption: errorMsg,
+          position: 'top'
+        })
+      } finally {
+        this.isSubmittingSettlement = false
+      }
+    },
+    closeSettlementDialog() {
+      this.showSettlementDialog = false
+      this.settlementStep = 'preview'
+      this.settlementPassword = ''
+      this.passwordError = ''
+      this.previewData = null
     }
   }
 }
@@ -547,9 +895,6 @@ export default {
 
 /* Filter Section */
 .filter-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16px;
   background: #f5f5f5;
   margin-bottom: 8px;
@@ -591,8 +936,6 @@ export default {
   color: #666;
 }
 
-
-
 /* Transaction Section */
 .transaction-section {
   background: #f5f5f5;
@@ -625,6 +968,45 @@ export default {
   height: 18px;
   background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);
   border-radius: 2px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 紧凑型结算按钮 */
+.settlement-btn-compact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
+  white-space: nowrap;
+}
+
+.settlement-btn-compact:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+.settlement-btn-compact:not(:disabled):hover {
+  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.4);
+}
+
+.settlement-btn-compact.settlement-btn-disabled {
+  background: linear-gradient(135deg, #bdbdbd 0%, #9e9e9e 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 /* Transaction List */
@@ -783,6 +1165,34 @@ export default {
   opacity: 0.7;
 }
 
+/* Instant Rate Row */
+.instant-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #f3e5f5 0%, #ffffff 100%);
+  border-radius: 6px;
+  border-left: 3px solid #9c27b0;
+}
+
+.rate-icon {
+  color: #9c27b0;
+}
+
+.rate-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.rate-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9c27b0;
+  margin-left: auto;
+}
+
 /* Footer Row: Time + ID */
 .transaction-footer-row {
   display: flex;
@@ -871,5 +1281,339 @@ export default {
 .safe-area-bottom {
   padding-bottom: constant(safe-area-inset-bottom);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 结算对话框样式 */
+.settlement-dialog {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f8f9fa;
+}
+
+.dialog-header {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  padding: 20px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.settlement-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #757575;
+}
+
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.card-header .q-icon {
+  color: #ff9800;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+.data-row .label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.data-row .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.data-row .value.primary {
+  color: #1976d2;
+  font-size: 18px;
+}
+
+.data-row .value.rate {
+  color: #7b1fa2;
+  font-family: 'Courier New', monospace;
+}
+
+.data-row.highlight {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+  padding: 12px 14px;
+  margin: 4px -14px;
+  border-radius: 8px;
+  border-bottom: none;
+}
+
+.data-row .value.profit {
+  color: #4caf50;
+  font-size: 17px;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #e0e0e0 50%, transparent 100%);
+  margin: 12px 0;
+}
+
+.data-row.total {
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+  padding: 14px;
+  margin: 8px -14px -14px;
+  border-radius: 0 0 8px 8px;
+  border-bottom: none;
+}
+
+.data-row .value.profit-total {
+  color: #2e7d32;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.stat-value.income {
+  color: #4caf50;
+}
+
+.stat-value.outcome {
+  color: #f44336;
+}
+
+.stat-value.instant {
+  color: #9c27b0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+}
+
+.data-row.result {
+  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+  padding: 14px;
+  margin: 4px -14px;
+  border-radius: 8px;
+  border-bottom: none;
+}
+
+.data-row .value.new-capital {
+  color: #1565c0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #fff8e1 0%, #fffdf7 100%);
+  border-left: 4px solid #ffa726;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.warning-box .q-icon {
+  color: #ff9800;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.warning-box span {
+  font-size: 13px;
+  color: #e65100;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.password-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.password-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.password-header .q-icon {
+  margin-bottom: 16px;
+}
+
+.password-header h6 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+}
+
+.password-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #757575;
+  line-height: 1.5;
+}
+
+.password-input {
+  width: 100%;
+  max-width: 400px;
+}
+
+.password-input :deep(.q-field__control) {
+  min-height: 56px;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #ffebee;
+  border-radius: 8px;
+  color: #c62828;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error-message .q-icon {
+  color: #ef5350;
+}
+
+.dialog-actions {
+  padding: 16px;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 12px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.action-btn {
+  flex: 1;
+  height: 48px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+  .tab-item {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-item {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .settlement-btn-compact span {
+    display: none;
+  }
+  
+  .settlement-btn-compact {
+    padding: 6px 8px;
+  }
 }
 </style>

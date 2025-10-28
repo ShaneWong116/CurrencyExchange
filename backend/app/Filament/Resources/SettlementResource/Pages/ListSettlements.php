@@ -51,18 +51,37 @@ class ListSettlements extends ListRecords
                                             ->label('结余汇率')
                                             ->content(fn () => number_format($preview['settlement_rate'], 3)),
                                         
-                                        \Filament\Forms\Components\Placeholder::make('profit')
+                                        \Filament\Forms\Components\Placeholder::make('outgoing_profit')
                                             ->label('利润（未扣除支出）')
                                             ->content(function () use ($preview) {
-                                                $profit = $preview['profit'];
-                                                $color = $profit >= 0 ? 'success' : 'danger';
-                                                return new HtmlString("<span class='text-{$color}-600 font-bold'>" . 
-                                                       number_format($profit, 2) . ' HKD</span>');
+                                                $outgoingProfit = $preview['outgoing_profit'];
+                                                $instantProfit = $preview['instant_profit'];
+                                                $totalProfit = $preview['profit'];
+                                                $color = $totalProfit >= 0 ? 'success' : 'danger';
+                                                
+                                                return new HtmlString(
+                                                    "<div class='space-y-1'>" .
+                                                    "<div>出账利润: <span class='font-semibold'>" . number_format($outgoingProfit, 0) . " HKD</span></div>" .
+                                                    "<div>即时买断利润: <span class='font-semibold'>" . number_format($instantProfit, 0) . " HKD</span></div>" .
+                                                    "<div class='border-t pt-1 mt-1'>总利润: <span class='text-{$color}-600 font-bold'>" . number_format($totalProfit, 0) . " HKD</span></div>" .
+                                                    "</div>"
+                                                );
                                             }),
                                         
                                         \Filament\Forms\Components\Placeholder::make('unsettled_count')
                                             ->label('未结余交易')
-                                            ->content(fn () => '入账: ' . $preview['unsettled_income_count'] . ' 笔 | 出账: ' . $preview['unsettled_outcome_count'] . ' 笔'),
+                                            ->content(function () use ($preview) {
+                                                $html = "<div class='space-y-1'>";
+                                                $html .= "<div>入账: <span class='font-semibold'>" . $preview['unsettled_income_count'] . " 笔</span></div>";
+                                                $html .= "<div>出账: <span class='font-semibold'>" . $preview['unsettled_outcome_count'] . " 笔</span></div>";
+                                                
+                                                if ($preview['unsettled_instant_count'] > 0) {
+                                                    $html .= "<div class='text-orange-600'>即时买断: <span class='font-semibold'>" . $preview['unsettled_instant_count'] . " 笔</span></div>";
+                                                }
+                                                
+                                                $html .= "</div>";
+                                                return new HtmlString($html);
+                                            }),
                                     ])
                                     ->columns(3),
                                 
@@ -152,13 +171,22 @@ class ListSettlements extends ListRecords
                                             ->content(fn () => new HtmlString('<span class="font-semibold text-lg">' . 
                                                              number_format($preview['settlement_rate'], 3) . '</span>')),
                                         
-                                        \Filament\Forms\Components\Placeholder::make('profit_before_expenses')
-                                            ->label('利润（未扣除支出）')
+                                        \Filament\Forms\Components\Placeholder::make('outgoing_profit_confirm')
+                                            ->label('出账利润（未扣除支出）')
                                             ->content(function () use ($preview) {
-                                                $profit = $preview['profit'];
+                                                $profit = $preview['outgoing_profit'];
                                                 $color = $profit >= 0 ? 'success' : 'danger';
                                                 return new HtmlString("<span class='text-{$color}-600 font-bold text-lg'>" . 
-                                                       number_format($profit, 2) . ' HKD</span>');
+                                                       number_format($profit, 0) . ' HKD</span>');
+                                            }),
+                                        
+                                        \Filament\Forms\Components\Placeholder::make('instant_profit_confirm')
+                                            ->label('即时买断利润（未扣除支出）')
+                                            ->content(function () use ($preview) {
+                                                $profit = $preview['instant_profit'];
+                                                $color = $profit >= 0 ? 'success' : 'danger';
+                                                return new HtmlString("<span class='text-{$color}-600 font-bold text-lg'>" . 
+                                                       number_format($profit, 0) . ' HKD</span>');
                                             }),
                                         
                                         \Filament\Forms\Components\Placeholder::make('total_expenses_display')
@@ -174,7 +202,7 @@ class ListSettlements extends ListRecords
                                                        number_format($finalProfit, 2) . ' HKD</span>');
                                             }),
                                     ])
-                                    ->columns(4)
+                                    ->columns(5)
                                     ->columnSpanFull(),
                                 
                                 \Filament\Forms\Components\Section::make('结余后状态')
@@ -245,17 +273,28 @@ class ListSettlements extends ListRecords
                 ])
                 ->action(function (array $data, SettlementService $settlementService, Actions\Action $action) {
                     try {
+                        // 获取当前登录用户ID和类型
+                        $userId = auth()->id();
+                        $userType = 'admin'; // 后台管理界面只有管理员能访问
+                        
                         $settlement = $settlementService->execute(
                             $data['password'],
                             $data['expenses'] ?? [],
-                            null, // instantBuyoutRate
-                            $data['notes'] ?? null
+                            $data['notes'] ?? null,
+                            $userId,
+                            $userType
                         );
                         
                         Notification::make()
                             ->title('结余成功')
                             ->success()
-                            ->body("结余序号 #{$settlement->sequence_number}，利润: " . number_format($settlement->profit, 2) . ' HKD')
+                            ->body(sprintf(
+                                "结余序号 #%s，出账利润: %s HKD，即时买断利润: %s HKD，总利润: %s HKD",
+                                $settlement->sequence_number,
+                                number_format($settlement->outgoing_profit, 0),
+                                number_format($settlement->instant_profit, 0),
+                                number_format($settlement->profit, 0)
+                            ))
                             ->send();
                         
                         // 刷新页面
@@ -275,7 +314,20 @@ class ListSettlements extends ListRecords
                 ->modalWidth('7xl')
                 ->modalSubmitActionLabel('确认执行结余')
                 ->modalCancelActionLabel('取消')
-                ->before(function (SettlementService $settlementService) {
+                ->before(function (SettlementService $settlementService, Actions\Action $action) {
+                    // 1. 检查今日是否已结余
+                    if (\App\Models\Settlement::hasSettledToday()) {
+                        Notification::make()
+                            ->title('无法执行结余')
+                            ->warning()
+                            ->body('今日已完成结余，无法重复操作')
+                            ->send();
+                        
+                        $action->halt();
+                        return;
+                    }
+                    
+                    // 2. 检查是否有未结余的交易
                     $preview = $settlementService->getPreview();
                     
                     if (!$preview['can_settle']) {
@@ -285,7 +337,7 @@ class ListSettlements extends ListRecords
                             ->body('当前没有未结余的交易，无法执行结余操作')
                             ->send();
                         
-                        $this->halt();
+                        $action->halt();
                     }
                 }),
         ];
