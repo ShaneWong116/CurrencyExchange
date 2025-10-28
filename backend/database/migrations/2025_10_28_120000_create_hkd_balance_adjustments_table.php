@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('capital_adjustments', function (Blueprint $table) {
+        Schema::create('hkd_balance_adjustments', function (Blueprint $table) {
             $table->id();
-            $table->decimal('before_amount', 15, 2)->comment('调整前本金（港币）');
-            $table->decimal('after_amount', 15, 2)->comment('调整后本金（港币）');
+            $table->decimal('before_amount', 15, 2)->comment('调整前港币余额（港币）');
+            $table->decimal('after_amount', 15, 2)->comment('调整后港币余额（港币）');
             $table->decimal('adjustment_amount', 15, 2)->comment('调整金额（港币）');
             $table->enum('adjustment_type', ['manual', 'settlement', 'system'])->default('manual')->comment('调整类型：手动、结算、系统');
             $table->foreignId('settlement_id')->nullable()->constrained('settlements')->onDelete('set null')->comment('关联结算ID（如果是结算触发）');
@@ -32,6 +32,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('capital_adjustments');
+        Schema::dropIfExists('hkd_balance_adjustments');
     }
 };
+

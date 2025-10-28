@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Channel;
 use App\Models\Setting;
 use App\Models\CapitalAdjustment;
+use App\Models\HkdBalanceAdjustment;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -72,14 +73,18 @@ class SettlementService
         $unsettledIncomeHkd = $unsettledIncomeTransactions->sum('hkd_amount');
 
         // 4. 计算当前结余汇率
-        // 人民币总量 = 人民币结余 + 未结余入账人民币金额之和
-        $rmbTotal = $rmbBalanceTotal + $unsettledIncomeRmb;
+        // 修正说明:渠道余额汇总已经包含了出账的影响(入账-出账)
+        // 但结余汇率应该只基于未结余的入账交易,不应该受出账影响
+        // 正确计算:只使用未结余的入账交易
         
-        // 港币总量 = 当前港币结余 + 未结余入账港币金额之和
-        $hkdTotal = $currentHkdBalance + $unsettledIncomeHkd;
+        // 人民币总量 = 未结余入账人民币金额之和
+        $rmbTotal = $unsettledIncomeRmb;
+        
+        // 港币总量 = 未结余入账港币金额之和  
+        $hkdTotal = $unsettledIncomeHkd;
         
         // 当前结余汇率 = 人民币总量 ÷ 港币总量（保留3位小数）
-        $settlementRate = $hkdTotal > 0 ? round($rmbTotal / $hkdTotal, 3) : 0;
+        $settlementRate = $hkdTotal > 0 ? round($rmbTotal / $hkdTotal, 3, PHP_ROUND_HALF_UP) : 0;
 
         // 5. 计算出账利润
         $unsettledOutcomeTransactions = Transaction::unsettled()
@@ -92,11 +97,11 @@ class SettlementService
         // 出账人民币总额
         $outcomeRmbTotal = $unsettledOutcomeTransactions->sum('rmb_amount');
         
-        // 出账港币成本 = 出账人民币总额 ÷ 当前结余汇率
-        $outcomeHkdCost = $settlementRate > 0 ? round($outcomeRmbTotal / $settlementRate, 3) : 0;
+        // 出账港币成本 = 出账人民币总额 ÷ 当前结余汇率(保留2位小数用于计算)
+        $outcomeHkdCost = $settlementRate > 0 ? round($outcomeRmbTotal / $settlementRate, 2, PHP_ROUND_HALF_UP) : 0;
         
-        // 出账利润 = 出账港币总额 - 出账港币成本
-        $outgoingProfit = round($outcomeHkdTotal - $outcomeHkdCost, 3);
+        // 出账利润 = 出账港币总额 - 出账港币成本(四舍五入到个位)
+        $outgoingProfit = round($outcomeHkdTotal - $outcomeHkdCost, 0, PHP_ROUND_HALF_UP);
 
         // 6. 计算即时买断利润
         $unsettledInstantTransactions = Transaction::unsettled()
@@ -112,12 +117,12 @@ class SettlementService
             // 港币卖出金额 = 人民币之和 ÷ 即时买断汇率（四舍五入到十位）
             $instantHkdSellAmount = round($instantRmbTotal / $instantBuyoutRate / 10) * 10;
             
-            // 即时买断利润 = 港币卖出金额 - 港币成本
-            $instantProfit = round($instantHkdSellAmount - $instantHkdCost, 3);
+            // 即时买断利润 = 港币卖出金额 - 港币成本(四舍五入到个位)
+            $instantProfit = round($instantHkdSellAmount - $instantHkdCost, 0, PHP_ROUND_HALF_UP);
         }
 
-        // 7. 总利润
-        $totalProfit = round($outgoingProfit + $instantProfit, 3);
+        // 7. 总利润(四舍五入到个位)
+        $totalProfit = round($outgoingProfit + $instantProfit, 0, PHP_ROUND_HALF_UP);
 
         // 计算其他支出为0时的预期结果
         $expectedNewCapital = $currentCapital + $totalProfit;
@@ -271,8 +276,18 @@ class SettlementService
                 $userId
             );
             
-            // 12. 更新系统设置中的港币结余
-            Setting::set('hkd_balance', round($newHkdBalance, 2), '港币结余(HKD)', 'number');
+            // 12. 创建港币余额调整记录（结算类型）
+            HkdBalanceAdjustment::createAdjustment(
+                afterAmount: $newHkdBalance,
+                adjustmentType: 'settlement',
+                reason: sprintf(
+                    '结算调整 - 结算号: %s, 利润: HK$ %s',
+                    $sequenceNumber,
+                    number_format($preview['profit'], 2)
+                ),
+                settlementId: $settlement->id,
+                userId: $userId
+            );
             
             return $settlement;
         });

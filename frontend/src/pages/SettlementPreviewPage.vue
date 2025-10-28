@@ -57,7 +57,7 @@
                 <q-item-section>
                   <q-item-label class="text-grey-7">✓ 利润（本次结余）</q-item-label>
                   <q-item-label class="text-h6 text-weight-bold" :class="preview.total_profit >= 0 ? 'text-positive' : 'text-negative'">
-                    {{ formatCurrency(preview.total_profit) }} HKD
+                    {{ formatInteger(preview.total_profit) }} HKD
                   </q-item-label>
                 </q-item-section>
               </q-item>
@@ -88,25 +88,25 @@
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>出账利润</q-item-label>
-                    <q-item-label>{{ formatCurrency(preview.outgoing_profit) }} HKD</q-item-label>
+                    <q-item-label>{{ formatInteger(preview.outgoing_profit) }} HKD</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>即时买断利润</q-item-label>
-                    <q-item-label>{{ formatCurrency(preview.instant_profit) }} HKD</q-item-label>
+                    <q-item-label>{{ formatInteger(preview.instant_profit) }} HKD</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>总利润</q-item-label>
-                    <q-item-label class="text-weight-bold">{{ formatCurrency(preview.total_profit) }} HKD</q-item-label>
+                    <q-item-label class="text-weight-bold">{{ formatInteger(preview.total_profit) }} HKD</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item>
                   <q-item-section>
                     <q-item-label caption>结余汇率</q-item-label>
-                    <q-item-label>{{ preview.settlement_rate }}</q-item-label>
+                    <q-item-label>{{ formatRate(preview.settlement_rate) }}</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item v-if="preview.needs_instant_rate">
@@ -312,6 +312,14 @@ const canSubmit = computed(() => {
 // 方法
 const formatCurrency = (value) => {
   return parseFloat(value || 0).toFixed(2)
+}
+
+const formatRate = (value) => {
+  return parseFloat(value || 0).toFixed(3)
+}
+
+const formatInteger = (value) => {
+  return Math.round(parseFloat(value || 0)).toString()
 }
 
 const checkTodaySettlement = async () => {

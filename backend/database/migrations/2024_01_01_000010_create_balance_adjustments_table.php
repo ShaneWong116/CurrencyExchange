@@ -17,7 +17,7 @@ return new class extends Migration
             $table->decimal('adjustment_amount', 15, 2)->comment('调整金额（正数为增加，负数为减少）');
             $table->decimal('after_amount', 15, 2)->comment('调整后金额');
             $table->enum('type', ['manual', 'system'])->default('manual')->comment('调整类型：手动/系统');
-            $table->text('reason')->comment('调整原因');
+            $table->text('reason')->nullable()->comment('调整原因');
             $table->timestamps();
             
             $table->index(['channel_id', 'created_at']);

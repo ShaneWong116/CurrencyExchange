@@ -14,11 +14,6 @@ class ListCapitalAdjustments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('current_capital')
-                ->label(fn () => '💰 当前系统本金: HK$ ' . number_format(CapitalAdjustment::getCurrentCapital(), 2))
-                ->color('success')
-                ->disabled()
-                ->extraAttributes(['class' => 'text-lg font-bold']),
             Actions\CreateAction::make()
                 ->label('调整本金'),
         ];
