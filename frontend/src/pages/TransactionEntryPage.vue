@@ -30,7 +30,16 @@
               <q-input v-model.number="form.hkdAmount" label="港币金额" type="number" step="0.01" :rules="[val => val !== null && val !== undefined && val >= 0 || '金额必须大于等于0']" />
             </div>
             <div class="col-12 col-sm-4">
-              <q-input v-model.number="form.exchangeRate" label="汇率（CNY/HKD）" type="number" step="0.00001" :rules="[val => !!val && val > 0 || '汇率必须大于0']" hint="将按 人民币/港币 自动计算，修改任一金额会重新计算" />
+              <q-input 
+                v-model="exchangeRateDisplay" 
+                label="汇率（CNY/HKD）" 
+                type="text"
+                inputmode="decimal"
+                @blur="formatExchangeRate"
+                @focus="onExchangeRateFocus"
+                :rules="exchangeRateRules" 
+                hint="保留三位小数，如：0.880"
+              />
             </div>
           </div>
         </q-card-section>
@@ -43,12 +52,14 @@
             <q-icon name="bolt" class="q-mr-sm" />即时买断
           </div>
           <q-input 
-            v-model.number="form.instantRate" 
+            v-model="instantRateDisplay" 
             label="即时买断汇率（CNY/HKD）" 
-            type="number" 
-            step="0.00001" 
-            :rules="instantRateRules" 
-            hint="将据此计算出账港币金额：港币 = 人民币 / 即时汇率" 
+            type="text"
+            inputmode="decimal"
+            @blur="formatInstantRate"
+            @focus="onInstantRateFocus"
+            :rules="instantRateDisplayRules" 
+            hint="保留三位小数，如：0.875。将据此计算出账港币金额" 
           />
         </q-card-section>
       </q-card>
@@ -160,6 +171,10 @@ const form = ref({
   remarks: ''
 })
 
+// 汇率显示值(文本格式,保留3位小数)
+const exchangeRateDisplay = ref('')
+const instantRateDisplay = ref('')
+
 const editingDraftRef = ref(null) // 保存正在编辑的草稿对象（云端或本地）
 const images = ref([])
 const fileInputRef = ref(null)
@@ -178,11 +193,56 @@ const channelOptions = computed(() => {
   return transactionStore.activeChannels.map(c => ({ label: c.name, value: c.id }))
 })
 
-// 校验：即时买断时即时汇率需大于0且不等于入账汇率
-const instantRateRules = [
-  val => !!val && val > 0 || '即时买断汇率必须大于0',
-  val => val !== form.value.exchangeRate || '即时买断汇率不能与入账汇率相同'
+// 汇率验证规则
+const exchangeRateRules = [
+  val => {
+    if (!val || val.trim() === '') return '汇率不能为空'
+    const num = parseFloat(val)
+    return !isNaN(num) && num > 0 || '汇率必须大于0'
+  }
 ]
+
+// 即时买断汇率验证规则
+const instantRateDisplayRules = [
+  val => {
+    if (!val || val.trim() === '') return '即时买断汇率不能为空'
+    const num = parseFloat(val)
+    if (isNaN(num) || num <= 0) return '即时买断汇率必须大于0'
+    return num !== form.value.exchangeRate || '即时买断汇率不能与入账汇率相同'
+  }
+]
+
+// 汇率格式化方法
+const formatExchangeRate = () => {
+  const val = exchangeRateDisplay.value
+  if (!val || val.trim() === '') return
+  
+  const num = parseFloat(val)
+  if (!isNaN(num) && num > 0) {
+    form.value.exchangeRate = num
+    exchangeRateDisplay.value = num.toFixed(3)
+  }
+}
+
+const onExchangeRateFocus = () => {
+  // 聚焦时如果是格式化的值,保持原样
+}
+
+// 即时买断汇率格式化方法
+const formatInstantRate = () => {
+  const val = instantRateDisplay.value
+  if (!val || val.trim() === '') return
+  
+  const num = parseFloat(val)
+  if (!isNaN(num) && num > 0) {
+    form.value.instantRate = num
+    instantRateDisplay.value = num.toFixed(3)
+  }
+}
+
+const onInstantRateFocus = () => {
+  // 聚焦时如果是格式化的值,保持原样
+}
 
 // 自动计算汇率（人民币/港币），当两者均有效时始终重新计算
 const autoCalcRate = () => {
@@ -191,9 +251,26 @@ const autoCalcRate = () => {
   // 只有当港币大于0时才计算汇率，避免除以0
   // 人民币可以为0，但港币必须大于0才能计算汇率
   if (rmb >= 0 && hkd > 0) {
-    form.value.exchangeRate = Number((rmb / hkd).toFixed(5))
+    const rate = Number((rmb / hkd).toFixed(3))
+    form.value.exchangeRate = rate
+    exchangeRateDisplay.value = rate.toFixed(3)
   }
 }
+
+// 监听汇率显示值的变化,同步到form
+watch(exchangeRateDisplay, (newVal) => {
+  const num = parseFloat(newVal)
+  if (!isNaN(num) && num > 0) {
+    form.value.exchangeRate = num
+  }
+})
+
+watch(instantRateDisplay, (newVal) => {
+  const num = parseFloat(newVal)
+  if (!isNaN(num) && num > 0) {
+    form.value.instantRate = num
+  }
+})
 
 watch(() => [form.value.rmbAmount, form.value.hkdAmount], () => {
   autoCalcRate()
@@ -259,6 +336,14 @@ const loadDraftIfEditing = () => {
   form.value.instantRate = found.instant_rate ?? null
   form.value.channelId = found.channel_id ?? null
   form.value.remarks = found.notes ?? ''
+  
+  // 同步汇率显示值(保留3位小数)
+  if (found.exchange_rate != null) {
+    exchangeRateDisplay.value = Number(found.exchange_rate).toFixed(3)
+  }
+  if (found.instant_rate != null) {
+    instantRateDisplay.value = Number(found.instant_rate).toFixed(3)
+  }
 
   // 推断交易类型
   if (!transactionType.value) {
@@ -612,5 +697,6 @@ onBeforeUnmount(() => {})
   }
 }
 </style>
+
 
 

@@ -31,6 +31,10 @@ class ReportsPage extends Page
         'month' => null,
         'other_expenses' => [],
     ];
+    
+    public $monthlyData = null;
+    public $dailyData = null;
+    public $activeTab = 'monthly'; // 'daily', 'monthly', 'yearly'
 
     public ?array $yearly = [
         'year' => null,
@@ -55,24 +59,13 @@ class ReportsPage extends Page
     {
         return Forms\Form::make($this)
             ->schema([
-                Forms\Components\DatePicker::make('daily.date')
-                    ->label('日期')
-                    ->required(),
-                Forms\Components\Group::make([
-                    Forms\Components\Actions::make([
-                        Forms\Components\Actions\Action::make('generateDaily')
-                            ->label('生成')
-                            ->action('generateDaily'),
-                        Forms\Components\Actions\Action::make('exportDaily')
-                            ->label('导出Excel')
-                            ->color('primary')
-                            ->action('exportDaily'),
-                        Forms\Components\Actions\Action::make('persistDaily')
-                            ->label('保存为结余')
-                            ->color('success')
-                            ->action('persistDaily'),
-                    ])->alignment('start')
-                ])
+                Forms\Components\Actions::make([
+                    Forms\Components\Actions\Action::make('exportDaily')
+                        ->label('导出Excel')
+                        ->color('primary')
+                        ->action('exportDaily')
+                        ->size('sm'),
+                ])->alignment('end')
             ]);
     }
 
@@ -80,16 +73,31 @@ class ReportsPage extends Page
     {
         return Forms\Form::make($this)
             ->schema([
-                Forms\Components\TextInput::make('monthly.year')->numeric()->label('年份')->required(),
-                Forms\Components\TextInput::make('monthly.month')->numeric()->label('月份')->required(),
-                Forms\Components\KeyValue::make('monthly.other_expenses')
-                    ->label('其他支出（名称=>HKD金额）')
-                    ->keyLabel('名称')
-                    ->valueLabel('港币金额'),
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('monthly.year')
+                            ->numeric()
+                            ->label('年份')
+                            ->default(now()->year)
+                            ->required(),
+                        Forms\Components\TextInput::make('monthly.month')
+                            ->numeric()
+                            ->label('月份')
+                            ->minValue(1)
+                            ->maxValue(12)
+                            ->default(now()->month)
+                            ->required(),
+                    ]),
                 Forms\Components\Group::make([
                     Forms\Components\Actions::make([
-                        Forms\Components\Actions\Action::make('generateMonthly')->label('生成')->action('generateMonthly'),
-                        Forms\Components\Actions\Action::make('exportMonthly')->label('导出Excel')->color('primary')->action('exportMonthly'),
+                        Forms\Components\Actions\Action::make('generateMonthly')
+                            ->label('查询')
+                            ->action('generateMonthly'),
+                        Forms\Components\Actions\Action::make('exportMonthly')
+                            ->label('导出Excel')
+                            ->color('primary')
+                            ->action('exportMonthly')
+                            ->visible(fn () => $this->monthlyData !== null),
                     ])
                 ])
             ]);
@@ -121,14 +129,13 @@ class ReportsPage extends Page
         session()->flash('reports.daily', $data);
     }
 
-    public function exportDaily(ReportService $service): void
+    public function exportDaily(ReportService $service)
     {
         $date = data_get($this->daily, 'date');
-        $data = $service->generateDailySettlement($date);
-        $filename = 'daily_settlement_' . str_replace('-', '', $date) . '.xlsx';
-        $path = 'exports/' . $filename;
-        Excel::store(new DailySettlementExport($data), $path, 'public');
-        Notification::make()->title('导出成功')->body('下载：/storage/' . $path)->success()->send();
+        $data = $service->getDailyTransactionData($date);
+        $filename = '日报表_' . $date . '.xlsx';
+        
+        return Excel::download(new DailySettlementExport($data), $filename);
     }
 
     public function persistDaily(ReportService $service): void
@@ -139,30 +146,145 @@ class ReportsPage extends Page
         Notification::make()->title('结余记录已保存')->success()->send();
     }
 
+    /**
+     * 查询日报表数据
+     */
+    public function loadDailyReport(ReportService $service): void
+    {
+        $date = data_get($this->daily, 'date');
+        
+        if (!$date) {
+            Notification::make()->title('请选择日期')->warning()->send();
+            return;
+        }
+
+        $this->dailyData = $service->getDailyTransactionData($date);
+    }
+
+    public function mount(): void
+    {
+        // 初始化日报表日期
+        $this->daily['date'] = now()->toDateString();
+        
+        // 初始化时加载当前月份数据
+        $this->monthly['year'] = now()->year;
+        $this->monthly['month'] = now()->month;
+        
+        // 自动加载当月数据和当日数据
+        $service = app(ReportService::class);
+        $this->monthlyData = $service->getMonthlySettlementData(
+            $this->monthly['year'],
+            $this->monthly['month']
+        );
+        $this->dailyData = $service->getDailyTransactionData($this->daily['date']);
+    }
+
+    /**
+     * 上一天
+     */
+    public function previousDay(ReportService $service): void
+    {
+        $currentDate = \Carbon\Carbon::parse($this->daily['date']);
+        $previousDate = $currentDate->subDay();
+        
+        $this->daily['date'] = $previousDate->toDateString();
+        $this->dailyData = $service->getDailyTransactionData($this->daily['date']);
+    }
+
+    /**
+     * 下一天
+     */
+    public function nextDay(ReportService $service): void
+    {
+        $currentDate = \Carbon\Carbon::parse($this->daily['date']);
+        $nextDate = $currentDate->addDay();
+        
+        $this->daily['date'] = $nextDate->toDateString();
+        $this->dailyData = $service->getDailyTransactionData($this->daily['date']);
+    }
+
+    /**
+     * 回到今天
+     */
+    public function goToday(ReportService $service): void
+    {
+        $this->daily['date'] = now()->toDateString();
+        $this->dailyData = $service->getDailyTransactionData($this->daily['date']);
+    }
+
+    public function previousMonth(ReportService $service): void
+    {
+        $year = (int) data_get($this->monthly, 'year');
+        $month = (int) data_get($this->monthly, 'month');
+        
+        // 上一个月
+        $month--;
+        if ($month < 1) {
+            $month = 12;
+            $year--;
+        }
+        
+        $this->monthly['year'] = $year;
+        $this->monthly['month'] = $month;
+        
+        // 加载数据
+        $this->monthlyData = $service->getMonthlySettlementData($year, $month);
+    }
+
+    public function nextMonth(ReportService $service): void
+    {
+        $year = (int) data_get($this->monthly, 'year');
+        $month = (int) data_get($this->monthly, 'month');
+        
+        // 下一个月
+        $month++;
+        if ($month > 12) {
+            $month = 1;
+            $year++;
+        }
+        
+        $this->monthly['year'] = $year;
+        $this->monthly['month'] = $month;
+        
+        // 加载数据
+        $this->monthlyData = $service->getMonthlySettlementData($year, $month);
+    }
+
     public function generateMonthly(ReportService $service): void
     {
         $year = (int) data_get($this->monthly, 'year');
         $month = (int) data_get($this->monthly, 'month');
-        $other = $this->normalizeOther(data_get($this->monthly, 'other_expenses', []));
-        $data = $service->generateMonthlySettlement($year, $month, $other);
-        Notification::make()->title('月结生成完成')->success()->send();
-        session()->flash('reports.monthly', $data);
+        
+        // 查询该月的结余数据
+        $data = $service->getMonthlySettlementData($year, $month);
+        
+        $this->monthlyData = $data;
+        Notification::make()->title('月度报表加载完成')->success()->send();
     }
 
-    public function exportMonthly(ReportService $service): void
+    public function exportMonthly(ReportService $service)
     {
         $year = (int) data_get($this->monthly, 'year');
         $month = (int) data_get($this->monthly, 'month');
-        $other = $this->normalizeOther(data_get($this->monthly, 'other_expenses', []));
-        $data = $service->generateMonthlySettlement($year, $month, $other);
-        $filename = 'monthly_settlement_' . $year . str_pad((string) $month, 2, '0', STR_PAD_LEFT) . '.xlsx';
-        $path = 'exports/' . $filename;
+        
+        $data = $this->monthlyData ?? $service->getMonthlySettlementData($year, $month);
+        $filename = '月度报表_' . $year . '年' . $month . '月.xlsx';
+        
         $rows = [];
-        foreach ($data['monthly_data'] as $row) {
-            $rows[] = [$row['date'], $row['principal'], $row['total_income'], $row['total_expense'], $data['other_expenses'], $row['profit']];
+        foreach ($data['daily_data'] as $row) {
+            $rows[] = [
+                $row['date'],
+                $row['previous_capital'],
+                $row['profit'],
+                $row['expenses'],
+                $row['new_capital'],
+                $row['rmb_balance'],
+                $row['hkd_balance'],
+                $row['notes'] ?? '',
+            ];
         }
-        Excel::store(new MonthlySettlementExport($rows), $path, 'public');
-        Notification::make()->title('导出成功')->body('下载：/storage/' . $path)->success()->send();
+        
+        return Excel::download(new MonthlySettlementExport($rows), $filename);
     }
 
     public function generateYearly(ReportService $service): void
@@ -174,19 +296,26 @@ class ReportsPage extends Page
         session()->flash('reports.yearly', $data);
     }
 
-    public function exportYearly(ReportService $service): void
+    public function exportYearly(ReportService $service)
     {
         $year = (int) data_get($this->yearly, 'year');
         $other = $this->normalizeOther(data_get($this->yearly, 'other_expenses', []));
         $data = $service->generateYearlySettlement($year, $other);
-        $filename = 'yearly_settlement_' . $year . '.xlsx';
-        $path = 'exports/' . $filename;
+        $filename = '年度报表_' . $year . '年.xlsx';
+        
         $rows = [];
         foreach ($data['yearly_data'] as $row) {
-            $rows[] = [$row['month'], $row['principal'], $row['total_income'], $row['total_expense'], $data['other_expenses'], $row['profit']];
+            $rows[] = [
+                $row['month'],
+                $row['principal'],
+                $row['total_income'],
+                $row['total_expense'],
+                $data['other_expenses'],
+                $row['profit']
+            ];
         }
-        Excel::store(new YearlySettlementExport($rows), $path, 'public');
-        Notification::make()->title('导出成功')->body('下载：/storage/' . $path)->success()->send();
+        
+        return Excel::download(new YearlySettlementExport($rows), $filename);
     }
 
     private function normalizeOther(array $kv): array

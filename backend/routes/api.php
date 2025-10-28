@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 交易记录
     Route::get('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'index']);
     Route::get('/transactions/statistics', [\App\Http\Controllers\Api\TransactionController::class, 'statistics']);
+    Route::get('/transactions/balance-overview', [\App\Http\Controllers\Api\TransactionController::class, 'balanceOverview']);
     Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
     Route::get('/transactions/{transaction}', [\App\Http\Controllers\Api\TransactionController::class, 'show']);
     Route::post('/transactions/batch', [\App\Http\Controllers\Api\TransactionController::class, 'batchStore']);

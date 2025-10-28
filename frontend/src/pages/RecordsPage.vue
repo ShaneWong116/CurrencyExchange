@@ -16,12 +16,12 @@
       <div class="summary-card">
         <div class="summary-details">
           <div class="detail-row">
-            <div class="detail-label">人民币</div>
-            <div class="detail-value">¥{{ formatAmount(getCurrentCNY()) }}</div>
+            <div class="detail-label">人民币余额</div>
+            <div class="detail-value">¥{{ formatAmount(balanceOverview.total_rmb) }}</div>
           </div>
           <div class="detail-row">
-            <div class="detail-label">港币</div>
-            <div class="detail-value">HK${{ formatAmount(getCurrentHKD()) }}</div>
+            <div class="detail-label">港币余额</div>
+            <div class="detail-value">HK${{ formatAmount(balanceOverview.total_hkd) }}</div>
           </div>
           <div class="detail-row">
             <div class="detail-label">交易数</div>
@@ -152,12 +152,15 @@ export default {
         outcome: { cny: 0, hkd: 0, count: 0 },
         instant: { cny: 0, hkd: 0, count: 0 }
       },
+      balanceOverview: {
+        total_rmb: 0,
+        total_hkd: 0
+      },
       transactions: [],
       page: 1,
       hasMore: true,
       loading: false,
-      filterType: 'all',
-      accountBalance: 0  // 账户人民币结余
+      filterType: 'all'
     }
   },
   computed: {
@@ -172,30 +175,31 @@ export default {
     const auth = useAuthStore()
     this.userName = auth.user?.name || ''
 
+    await this.fetchBalanceOverview()
     await this.fetchStats()
     await this.fetchTransactions()
   },
   methods: {
-    getCurrentCNY() {
-      if (this.filterType === 'all') {
-        return this.stats.income.cny + this.stats.outcome.cny + this.stats.instant.cny
-      }
-      const key = this.filterType === 'instant_buy' ? 'instant' : this.filterType
-      return this.stats[key]?.cny || 0
-    },
-    getCurrentHKD() {
-      if (this.filterType === 'all') {
-        return this.stats.income.hkd + this.stats.outcome.hkd + this.stats.instant.hkd
-      }
-      const key = this.filterType === 'instant_buy' ? 'instant' : this.filterType
-      return this.stats[key]?.hkd || 0
-    },
     getCurrentCount() {
       if (this.filterType === 'all') {
         return this.stats.income.count + this.stats.outcome.count + this.stats.instant.count
       }
       const key = this.filterType === 'instant_buy' ? 'instant' : this.filterType
       return this.stats[key]?.count || 0
+    },
+    async fetchBalanceOverview() {
+      try {
+        const res = await api.get('/transactions/balance-overview')
+        if (res.data?.success) {
+          this.balanceOverview = res.data.data
+        }
+      } catch (error) {
+        console.error('Failed to fetch balance overview:', error)
+        this.$q.notify({
+          type: 'negative',
+          message: '获取余额总览失败'
+        })
+      }
     },
     typeLabel(type) {
       const labels = {
@@ -337,6 +341,7 @@ export default {
       this.page = 1
       this.hasMore = true
       await Promise.all([
+        this.fetchBalanceOverview(),
         this.fetchStats(),
         this.fetchTransactions(true)
       ])

@@ -24,11 +24,15 @@
         <!-- 交易录入 -->
         <div class="card-wrapper">
           <div class="feature-card primary-card" @click="$router.push('/transaction')">
-            <div class="card-icon-wrapper primary-icon">
-              <q-icon name="add_circle" size="40px" class="card-icon" />
+            <div class="card-content">
+              <div class="card-icon-wrapper primary-icon">
+                <q-icon name="add_circle" size="40px" class="card-icon" />
+              </div>
+              <div class="card-text">
+                <div class="card-title">交易录入</div>
+                <div class="card-subtitle">入账 · 出账 · 即时买断</div>
+              </div>
             </div>
-            <div class="card-title">交易录入</div>
-            <div class="card-subtitle">入账 · 出账 · 即时买断</div>
             <div class="card-arrow">
               <q-icon name="arrow_forward" size="20px" />
             </div>
@@ -38,12 +42,16 @@
         <!-- 草稿管理 -->
         <div class="card-wrapper">
           <div class="feature-card orange-card" @click="$router.push('/drafts')">
-            <div class="card-icon-wrapper orange-icon">
-              <q-icon name="edit_note" size="40px" class="card-icon" />
-            </div>
-            <div class="card-title">草稿箱</div>
-            <div class="card-subtitle">
-              {{ draftStore.allDrafts.length }} 个草稿
+            <div class="card-content">
+              <div class="card-icon-wrapper orange-icon">
+                <q-icon name="edit_note" size="40px" class="card-icon" />
+              </div>
+              <div class="card-text">
+                <div class="card-title">草稿箱</div>
+                <div class="card-subtitle">
+                  {{ draftStore.allDrafts.length }} 个草稿
+                </div>
+              </div>
             </div>
             <q-badge 
               v-if="draftStore.pendingCount > 0" 
@@ -62,18 +70,22 @@
         <!-- 同步状态 -->
         <div class="card-wrapper">
           <div class="feature-card sync-card" :class="isOnline ? 'online-card' : 'offline-card'">
-            <div class="card-icon-wrapper" :class="isOnline ? 'success-icon' : 'error-icon'">
-              <q-icon 
-                :name="isOnline ? 'cloud_done' : 'cloud_off'" 
-                size="40px" 
-                class="card-icon"
-              />
-            </div>
-            <div class="card-title">
-              {{ isOnline ? '在线' : '离线' }}
-            </div>
-            <div class="card-subtitle">
-              {{ isOnline ? '数据已同步' : '等待网络连接' }}
+            <div class="card-content">
+              <div class="card-icon-wrapper" :class="isOnline ? 'success-icon' : 'error-icon'">
+                <q-icon 
+                  :name="isOnline ? 'cloud_done' : 'cloud_off'" 
+                  size="40px" 
+                  class="card-icon"
+                />
+              </div>
+              <div class="card-text">
+                <div class="card-title">
+                  {{ isOnline ? '在线' : '离线' }}
+                </div>
+                <div class="card-subtitle">
+                  {{ isOnline ? '数据已同步' : '等待网络连接' }}
+                </div>
+              </div>
             </div>
             
             <q-btn
@@ -258,20 +270,21 @@ onMounted(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 110px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
 }
 
 .feature-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
+  top: -20px;
+  right: -20px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  opacity: 0.1;
+  opacity: 0.06;
   transition: all 0.3s ease;
 }
 
@@ -284,26 +297,39 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
+/* Card Content - 横向布局 */
+.card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 /* Card Icon */
 .card-icon-wrapper {
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
 }
 
 .feature-card:hover .card-icon-wrapper {
-  transform: scale(1.1);
+  transform: scale(1.05) rotate(-5deg);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .card-icon {
   color: white;
+}
+
+/* Card Text */
+.card-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .primary-icon {
@@ -338,20 +364,23 @@ onMounted(() => {
   background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
 }
 
-/* Card Text */
+/* Card Title & Subtitle */
 .card-title {
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   letter-spacing: 0.3px;
+  line-height: 1.3;
 }
 
 .card-subtitle {
   font-size: 13px;
   color: #757575;
-  margin-bottom: 12px;
-  line-height: 1.5;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Card Arrow */
@@ -391,11 +420,15 @@ onMounted(() => {
 
 /* Sync Button */
 .sync-btn {
-  margin-top: 12px;
+  margin-top: 8px;
+  align-self: flex-start;
+  margin-left: 80px;
   background: rgba(25, 118, 210, 0.1);
   color: #1976D2;
   border-radius: 8px;
   font-weight: 600;
+  font-size: 12px;
+  padding: 4px 12px;
 }
 
 .sync-btn:hover {
@@ -410,6 +443,38 @@ onMounted(() => {
   
   .user-name {
     font-size: 20px;
+  }
+  
+  .card-icon-wrapper {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .card-icon-wrapper .q-icon {
+    font-size: 32px;
+  }
+  
+  .card-title {
+    font-size: 16px;
+  }
+  
+  .card-subtitle {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .card-content {
+    gap: 12px;
+  }
+  
+  .card-icon-wrapper {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .sync-btn {
+    margin-left: 68px;
   }
 }
 </style>

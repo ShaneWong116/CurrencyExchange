@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\Channel;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -254,6 +255,31 @@ class TransactionController extends Controller
                 'by_type' => $byType,
                 'currency_top3' => $currencyTop3,
                 'channel_top3' => $channelTop3,
+            ],
+        ]);
+    }
+
+    /**
+     * 获取渠道余额总览（外勤端使用）
+     * 返回当前人民币余额（各渠道汇总）和港币余额（系统设置）
+     */
+    public function balanceOverview(Request $request)
+    {
+        // 计算人民币余额：各渠道人民币余额汇总
+        $totalRmb = Channel::active()
+            ->get()
+            ->sum(function ($channel) {
+                return $channel->getRmbBalance();
+            });
+        
+        // 获取港币余额：从系统设置中获取（与管理后台保持一致）
+        $totalHkd = Setting::get('hkd_balance', 0);
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_rmb' => round($totalRmb, 2),
+                'total_hkd' => round($totalHkd, 2),
             ],
         ]);
     }

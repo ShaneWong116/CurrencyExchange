@@ -26,6 +26,7 @@ class Transaction extends Model
         'status',
         'settlement_status',
         'settlement_id',
+        'settlement_date',
         'submit_time'
     ];
 

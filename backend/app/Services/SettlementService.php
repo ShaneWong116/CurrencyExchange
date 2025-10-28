@@ -254,6 +254,7 @@ class SettlementService
             Transaction::unsettled()->update([
                 'settlement_status' => 'settled',
                 'settlement_id' => $settlement->id,
+                'settlement_date' => $settlement->settlement_date,
             ]);
             
             // 11. 创建本金调整记录（结算类型）
