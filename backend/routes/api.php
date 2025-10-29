@@ -51,6 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 结余管理
     Route::get('/settlements/check-today', [\App\Http\Controllers\Api\SettlementController::class, 'checkToday']);
+    Route::get('/settlements/used-dates', [\App\Http\Controllers\Api\SettlementController::class, 'getUsedDates']); // 新增
+    Route::get('/settlements/recommended-date', [\App\Http\Controllers\Api\SettlementController::class, 'getRecommendedDate']); // 新增
     Route::post('/settlements/verify-password', [\App\Http\Controllers\Api\SettlementController::class, 'verifyPassword']);
     Route::get('/settlements/preview', [\App\Http\Controllers\Api\SettlementController::class, 'preview']);
     Route::post('/settlements', [\App\Http\Controllers\Api\SettlementController::class, 'store']);

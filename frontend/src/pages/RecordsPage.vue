@@ -73,12 +73,10 @@
           <!-- 结算按钮 -->
           <button 
             class="settlement-btn-compact" 
-            :class="{ 'settlement-btn-disabled': hasSettledToday }"
-            :disabled="hasSettledToday"
             @click="openSettlementDialog"
           >
-            <q-icon :name="hasSettledToday ? 'check_circle' : 'account_balance'" size="16px" />
-            <span>{{ hasSettledToday ? '已结算' : '结算' }}</span>
+            <q-icon name="account_balance" size="16px" />
+            <span>结算</span>
           </button>
           <q-btn flat dense icon="refresh" size="sm" @click="refreshTransactions" :loading="loading" />
         </div>
@@ -369,7 +367,6 @@ export default {
       loading: false,
       filterType: 'all',
       // 结算相关
-      hasSettledToday: false,
       showSettlementDialog: false,
       settlementStep: 'preview', // 'preview' | 'password'
       loadingPreview: false,
@@ -395,8 +392,7 @@ export default {
     await Promise.all([
       this.fetchBalanceOverview(),
       this.fetchStats(),
-      this.fetchTransactions(),
-      this.checkTodaySettlement()
+      this.fetchTransactions()
     ])
   },
   methods: {
@@ -622,31 +618,10 @@ export default {
       return parseFloat(value || 0).toFixed(3)
     },
     // 结算相关方法
-    async checkTodaySettlement() {
-      try {
-        const res = await api.get('/settlements/check-today')
-        if (res.data?.success) {
-          this.hasSettledToday = res.data.data.settled || false
-        }
-      } catch (error) {
-        console.error('检查今日结算状态失败:', error)
-      }
-    },
     async openSettlementDialog() {
-      if (this.hasSettledToday) {
-        this.$q.notify({
-          type: 'warning',
-          message: '今日已完成结算',
-          position: 'top'
-        })
-        return
-      }
+      // 直接跳转到结算预览页面
+      this.$router.push('/settlement/preview')
       
-      this.showSettlementDialog = true
-      this.settlementStep = 'preview'
-      this.settlementPassword = ''
-      this.passwordError = ''
-      await this.loadSettlementPreview()
     },
     async loadSettlementPreview() {
       this.loadingPreview = true

@@ -15,19 +15,8 @@
         <div class="q-mt-md text-grey-7">加载中...</div>
       </div>
 
-      <!-- 今日已结余提示 -->
-      <q-banner v-else-if="todaySettled" class="bg-warning text-white q-mb-md" rounded>
-        <template v-slot:avatar>
-          <q-icon name="warning" />
-        </template>
-        今日已完成结余，无法重复操作
-        <template v-slot:action>
-          <q-btn flat label="查看详情" @click="viewTodaySettlement" />
-        </template>
-      </q-banner>
-
       <!-- 预览内容 -->
-      <div v-else>
+      <div v-if="!loading">
         <!--核对数据区域（醒目显示） -->
         <q-card class="q-mb-md" style="border: 2px solid #1976d2; border-radius: 10px;">
           <q-card-section class="bg-primary text-white">
@@ -206,6 +195,66 @@
           </q-card-section>
         </q-card>
 
+        <!-- 结余日期选择 - 移到最下方 -->
+        <q-card class="q-mb-md" style="border: 2px solid #f59e0b; border-radius: 10px;">
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-md text-weight-bold">
+              <q-icon name="event" color="primary" class="q-mr-xs" />
+              📅 选择结余日期
+            </div>
+            
+            <!-- 警示提示框 -->
+            <q-banner 
+              v-if="dateWarning" 
+              class="bg-warning text-white q-mb-md" 
+              rounded
+              dense
+            >
+              <template v-slot:avatar>
+                <q-icon name="warning" size="md" />
+              </template>
+              <div class="text-subtitle2 text-weight-bold">⚠️ {{ dateWarning }}</div>
+              <div class="text-caption q-mt-xs">请从下方选择可用日期</div>
+            </q-banner>
+            
+            <q-banner 
+              v-if="!dateWarning" 
+              class="bg-positive text-white q-mb-md" 
+              rounded
+              dense
+            >
+              <template v-slot:avatar>
+                <q-icon name="check_circle" size="md" />
+              </template>
+              <div class="text-subtitle2 text-weight-bold">✓ 今日尚未结余</div>
+              <div class="text-caption q-mt-xs">请从下方选择可用的记录日期</div>
+            </q-banner>
+            
+            <!-- 直接嵌入日历组件 -->
+            <q-date 
+              v-model="settlementDate"
+              :options="dateOptions"
+              mask="YYYY/MM/DD"
+              class="full-width"
+              minimal
+            />
+            
+            <!-- 已选择日期显示 -->
+            <div v-if="settlementDate" class="q-mt-md q-pa-md bg-primary text-white rounded-borders">
+              <div class="text-center">
+                <div class="text-caption">已选择日期</div>
+                <div class="text-h6">{{ formatDateDisplay(settlementDate) }}</div>
+              </div>
+            </div>
+            <div v-else class="q-mt-md q-pa-md bg-grey-3 rounded-borders">
+              <div class="text-center text-grey-7">
+                <q-icon name="event" size="md" class="q-mb-xs" />
+                <div class="text-caption">请从上方日历选择结余日期</div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <!-- 操作按钮 -->
         <div class="row q-gutter-md">
           <div class="col">
@@ -222,9 +271,13 @@
               label="确认结余"
               color="primary"
               class="full-width"
-              :disable="!canSubmit"
+              :disable="!canSubmit || !settlementDate"
               @click="showPasswordDialog = true"
-            />
+            >
+              <q-tooltip v-if="!settlementDate">
+                请先选择结余日期
+              </q-tooltip>
+            </q-btn>
           </div>
         </div>
       </div>
@@ -264,6 +317,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
   </q-page>
 </template>
 
@@ -278,8 +332,6 @@ const $q = useQuasar()
 
 // 数据
 const loading = ref(false)
-const todaySettled = ref(false)
-const todaySettlementId = ref(null)
 const preview = ref({
   previous_capital: 0,
   rmb_balance: 0,
@@ -296,6 +348,12 @@ const notes = ref('')
 const showPasswordDialog = ref(false)
 const password = ref('')
 const submitting = ref(false)
+
+// 日期选择相关
+const settlementDate = ref(null)  // 选择的结余日期
+const usedDates = ref([])  // 已使用的日期列表
+const recommendedDate = ref(null)  // 推荐日期
+const dateWarning = ref(null)  // 日期警告信息
 
 // 计算属性
 const totalExpenses = computed(() => {
@@ -322,17 +380,68 @@ const formatInteger = (value) => {
   return Math.round(parseFloat(value || 0)).toString()
 }
 
-const checkTodaySettlement = async () => {
+// checkTodaySettlement 已移除,改用日期推荐逻辑
+
+// 加载日期信息
+const loadDateInfo = async () => {
   try {
-    const response = await api.get('/settlements/check-today')
-    if (response.data.success && response.data.data.settled) {
-      todaySettled.value = true
-      todaySettlementId.value = response.data.data.settlement_id
+    // 获取推荐日期
+    const recResponse = await api.get('/settlements/recommended-date')
+    if (recResponse.data.success) {
+      const rec = recResponse.data.data
+      recommendedDate.value = rec.recommended_date
+      settlementDate.value = null  // 默认为空,让用户选择
+      dateWarning.value = rec.message
+    }
+    
+    // 获取已使用日期
+    const usedResponse = await api.get('/settlements/used-dates')
+    if (usedResponse.data.success) {
+      usedDates.value = usedResponse.data.data
     }
   } catch (error) {
-    console.error('检查今日结余失败:', error)
+    console.error('加载日期信息失败:', error)
   }
 }
+
+// 格式化日期显示
+const formatDateDisplay = (date) => {
+  if (!date) return ''
+  // 统一转换为 YYYY-MM-DD 格式再解析
+  const dateDash = date.replace(/\//g, '-')
+  const d = new Date(dateDash + 'T00:00:00')
+  const year = d.getFullYear()
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
+  return `${year}年${month}月${day}日 ${weekday}`
+}
+
+// 日期选项过滤:禁用已使用的日期和过去日期
+const dateOptions = (date) => {
+  // 使用本地时间而非UTC时间
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${year}/${month}/${day}`
+  
+  // 1. 禁用过去日期
+  if (date < todayStr) {
+    return false
+  }
+  
+  // 2. 禁用已使用的日期
+  if (usedDates.value && usedDates.value.length > 0) {
+    const checkDateDash = date.replace(/\//g, '-')
+    if (usedDates.value.includes(checkDateDash)) {
+      return false
+    }
+  }
+  
+  return true
+}
+
 
 const loadPreview = async () => {
   loading.value = true
@@ -389,6 +498,7 @@ const confirmSettlement = async () => {
     // 构建请求数据
     const data = {
       password: password.value,
+      settlement_date: settlementDate.value.replace(/\//g, '-'),  // 转换为YYYY-MM-DD格式
       expenses: expenses.value.filter(exp => exp.item_name && exp.amount > 0),
       notes: notes.value || null
     }
@@ -418,18 +528,12 @@ const confirmSettlement = async () => {
   }
 }
 
-const viewTodaySettlement = () => {
-  if (todaySettlementId.value) {
-    router.push(`/settlements/${todaySettlementId.value}`)
-  }
-}
+// viewTodaySettlement 已移除
 
 // 生命周期
 onMounted(async () => {
-  await checkTodaySettlement()
-  if (!todaySettled.value) {
-    await loadPreview()
-  }
+  await loadDateInfo()
+  await loadPreview()
 })
 </script>
 

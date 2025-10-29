@@ -38,6 +38,48 @@ class SettlementController extends Controller
     }
 
     /**
+     * 获取已有结余的日期列表
+     * GET /api/settlements/used-dates
+     */
+    public function getUsedDates()
+    {
+        try {
+            $dates = $this->settlementService->getUsedSettlementDates();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $dates,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '获取日期列表失败: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 获取推荐的结余日期
+     * GET /api/settlements/recommended-date
+     */
+    public function getRecommendedDate()
+    {
+        try {
+            $recommendation = $this->settlementService->getRecommendedSettlementDate();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $recommendation,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '获取推荐日期失败: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * 验证结余确认密码
      * POST /api/settlements/verify-password
      * 
@@ -119,6 +161,7 @@ class SettlementController extends Controller
             // 验证输入
             $validator = Validator::make($request->all(), [
                 'password' => 'required|string',
+                'settlement_date' => 'required|date|after_or_equal:today', // 只能选择今天或之后
                 'expenses' => 'nullable|array',
                 'expenses.*.item_name' => 'required|string|max:100',
                 'expenses.*.amount' => 'required|numeric|min:0',
@@ -126,6 +169,9 @@ class SettlementController extends Controller
                 'notes' => 'nullable|string|max:1000',
             ], [
                 'password.required' => '确认密码不能为空',
+                'settlement_date.required' => '结余日期不能为空',
+                'settlement_date.date' => '结余日期格式不正确',
+                'settlement_date.after_or_equal' => '该日期不可用，请选择其他可用日期',
                 'expenses.*.item_name.required' => '支出项目名称不能为空',
                 'expenses.*.item_name.max' => '支出项目名称不能超过100个字符',
                 'expenses.*.amount.required' => '支出金额不能为空',
@@ -154,13 +200,14 @@ class SettlementController extends Controller
                 $userType = 'field';
             }
 
-            // 执行结余
+            // 执行结余(传入日期)
             $settlement = $this->settlementService->execute(
                 $request->input('password'),
                 $request->input('expenses', []),
                 $request->input('notes'),
                 $userId,
-                $userType
+                $userType,
+                $request->input('settlement_date')  // 传入日期
             );
 
             // 返回结余详情

@@ -118,6 +118,7 @@ class Settlement extends Model
 
     /**
      * 检查今日是否已结余
+     * 注意:此方法仅用于查询,不再用于阻止重复结余(用户可选择日期)
      */
     public static function hasSettledToday()
     {
@@ -126,6 +127,7 @@ class Settlement extends Model
 
     /**
      * 获取今日结余记录
+     * 注意:可能返回多条记录中的第一条(允许一天多次结余)
      */
     public static function getTodaySettlement()
     {

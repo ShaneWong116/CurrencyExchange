@@ -9,6 +9,8 @@ use App\Models\Channel;
 use App\Models\Setting;
 use App\Models\BalanceAdjustment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 use Exception;
 
 /**
@@ -31,6 +33,57 @@ class SettlementService
             'settled' => $hasSettled,
             'settlement_id' => $settlement ? $settlement->id : null,
             'settlement_date' => $settlement ? $settlement->settlement_date->format('Y-m-d') : null,
+        ];
+    }
+
+    /**
+     * 获取已有结余记录的日期列表(用于前端禁用)
+     * 
+     * @param int $days 查询最近N天,默认60天
+     * @return array ['2024-10-28', '2024-10-30', ...]
+     */
+    public function getUsedSettlementDates($days = 60): array
+    {
+        return Settlement::where('settlement_date', '>=', now()->subDays($days))
+            ->pluck('settlement_date')
+            ->map(fn($date) => $date->format('Y-m-d'))
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * 推荐结余日期
+     * 逻辑:如果今天已有结余,推荐明天;否则推荐今天
+     * 
+     * @return array ['recommended_date' => '2024-10-29', 'has_today' => true, 'message' => '...']
+     */
+    public function getRecommendedSettlementDate(): array
+    {
+        $today = now()->toDateString();
+        $hasToday = Settlement::whereDate('settlement_date', $today)->exists();
+        
+        if ($hasToday) {
+            // 今天已有结余,推荐第一个未使用的日期
+            $recommendedDate = now()->addDay()->toDateString();
+            $count = 1;
+            
+            // 最多向后查找30天
+            while (Settlement::whereDate('settlement_date', $recommendedDate)->exists() && $count < 30) {
+                $recommendedDate = now()->addDays(++$count)->toDateString();
+            }
+            
+            return [
+                'recommended_date' => $recommendedDate,
+                'has_today' => true,
+                'message' => "今日已有结余记录,建议选择其他日期"
+            ];
+        }
+        
+        return [
+            'recommended_date' => $today,
+            'has_today' => false,
+            'message' => null
         ];
     }
 
@@ -168,25 +221,36 @@ class SettlementService
      * @param string|null $notes 备注
      * @param int|null $userId 执行结余的用户ID
      * @param string $userType 用户类型: 'admin' 或 'field'
+     * @param string|null $settlementDate 结余日期(可选,默认今天)
      * @return Settlement
      */
-    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin')
+    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin', ?string $settlementDate = null)
     {
-        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType) {
-            // 1. 检查今日是否已结余
-            if (Settlement::hasSettledToday()) {
-                throw new Exception('今日已完成结余，无法重复操作');
+        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType, $settlementDate) {
+            // 1. 确定结余日期
+            $settlementDate = $settlementDate ?? now()->toDateString();
+            
+            // 2. 验证日期不能早于今天
+            if (Carbon::parse($settlementDate)->isBefore(now()->startOfDay())) {
+                throw new Exception('该日期不可用，请选择其他可用日期');
             }
             
-            // 2. 验证密码
+            // 3. 检查该日期是否已有结余(给予警告但允许,因为可能需要一天多次结余)
+            $existingCount = Settlement::whereDate('settlement_date', $settlementDate)->count();
+            if ($existingCount > 0) {
+                // 记录日志但不阻止(因为用户已经明确选择了该日期)
+                Log::warning("日期 {$settlementDate} 已有 {$existingCount} 条结余记录,用户选择继续");
+            }
+            
+            // 4. 验证密码
             if (!$this->verifyPassword($password)) {
                 throw new Exception('确认密码错误');
             }
             
-            // 3. 获取预览数据（即时买断利润已在录入时计算）
+            // 5. 获取预览数据（即时买断利润已在录入时计算）
             $preview = $this->getPreview();
             
-            // 4. 业务校验
+            // 6. 业务校验
             if (!$preview['can_settle']) {
                 throw new Exception('当前没有未结余的交易，无法执行结余操作');
             }
@@ -195,23 +259,23 @@ class SettlementService
                 throw new Exception('结余汇率计算异常，请检查港币结余是否正确');
             }
             
-            // 5. 计算其他支出总额
+            // 7. 计算其他支出总额
             $otherExpensesTotal = 0;
             foreach ($expenses as $expense) {
                 $otherExpensesTotal += $expense['amount'] ?? 0;
             }
             
-            // 6. 计算结余后的数据
+            // 8. 计算结余后的数据
             $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal;
             $newHkdBalance = $preview['current_hkd_balance'] + $preview['profit'];
             // $newHkdBalance = $preview['current_hkd_balance'] + $preview['outgoing_profit'] - $otherExpensesTotal;
             
-            // 7. 获取下一个序号
+            // 9. 获取下一个序号
             $sequenceNumber = Settlement::getNextSequenceNumber();
             
-            // 8. 创建结余记录
+            // 10. 创建结余记录(使用指定的日期)
             $settlement = Settlement::create([
-                'settlement_date' => now()->toDateString(),
+                'settlement_date' => $settlementDate,  // 使用传入的日期
                 'previous_capital' => $preview['current_capital'],
                 'previous_hkd_balance' => $preview['current_hkd_balance'],
                 'profit' => $preview['profit'],
@@ -229,7 +293,7 @@ class SettlementService
                 'created_by_type' => $userType, // 保存用户类型
             ]);
             
-            // 9. 保存其他支出明细
+            // 11. 保存其他支出明细
             if (!empty($expenses)) {
                 foreach ($expenses as $expense) {
                     SettlementExpense::create([
@@ -240,14 +304,14 @@ class SettlementService
                 }
             }
             
-            // 10. 更新所有未结余的交易状态
+            // 12. 更新所有未结余的交易状态
             Transaction::unsettled()->update([
                 'settlement_status' => 'settled',
                 'settlement_id' => $settlement->id,
                 'settlement_date' => $settlement->settlement_date,
             ]);
             
-            // 11. 创建本金调整记录（结算类型）
+            // 13. 创建本金调整记录（结算类型）
             BalanceAdjustment::createCapitalAdjustment(
                 $newCapital,
                 'settlement',
@@ -261,7 +325,7 @@ class SettlementService
                 $userId
             );
             
-            // 12. 创建港币余额调整记录（结算类型）
+            // 14. 创建港币余额调整记录（结算类型）
             BalanceAdjustment::createHkdBalanceAdjustment(
                 afterAmount: $newHkdBalance,
                 adjustmentType: 'settlement',

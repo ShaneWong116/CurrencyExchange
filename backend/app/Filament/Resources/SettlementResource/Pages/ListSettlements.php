@@ -134,6 +134,8 @@ class ListSettlements extends ListRecords
                         ->schema(function (SettlementService $settlementService, callable $get) {
                             $preview = $settlementService->getPreview();
                             $expenses = $get('expenses') ?? [];
+                            $recommendation = $settlementService->getRecommendedSettlementDate();
+                            $usedDates = $settlementService->getUsedSettlementDates();
                             
                             // 计算总支出
                             $totalExpenses = collect($expenses)->sum('amount');
@@ -255,6 +257,62 @@ class ListSettlements extends ListRecords
                                     ->collapsible()
                                     ->collapsed(fn () => empty($expenses)),
                                 
+                                // 日期选择 - 放在安全确认之前
+                                \Filament\Forms\Components\Section::make('')
+                                    ->schema([
+                                        \Filament\Forms\Components\Placeholder::make('date_warning')
+                                            ->label('')
+                                            ->content(new HtmlString(
+                                                '<div class="rounded-lg p-4 mb-4" style="background-color: ' . 
+                                                ($recommendation['has_today'] ? '#FEF3C7; border: 2px solid #F59E0B;' : '#D1FAE5; border: 2px solid #10B981;') . '">' .
+                                                '<div class="flex items-start gap-3">' .
+                                                '<div class="text-2xl">' . ($recommendation['has_today'] ? '⚠️' : '✅') . '</div>' .
+                                                '<div>' .
+                                                '<div class="font-bold text-lg mb-1" style="color: ' . ($recommendation['has_today'] ? '#B45309' : '#065F46') . ';">' .
+                                                ($recommendation['has_today'] ? '警告：今日已有结余记录' : '提示：今日尚未结余') .
+                                                '</div>' .
+                                                '<div class="text-sm" style="color: ' . ($recommendation['has_today'] ? '#92400E' : '#064E3B') . ';">' .
+                                                ($recommendation['has_today'] ? $recommendation['message'] . '，请从下方选择可用日期' : '今日可以结余，请从下方选择可用的记录日期') .
+                                                '</div>' .
+                                                '<div class="text-xs mt-2 flex items-center gap-1" style="color: #6B7280;">' .
+                                                '<span>💡</span>' .
+                                                '<span>已有结余记录的日期将显示为灰色且无法选择</span>' .
+                                                '</div>' .
+                                                '</div>' .
+                                                '</div>' .
+                                                '</div>'
+                                            )),
+                                        
+                                        \Filament\Forms\Components\DatePicker::make('settlement_date')
+                                            ->label('📅 选择结余日期')
+                                            ->required()
+                                            ->default(null)
+                                            ->minDate(now())
+                                            ->native(false)
+                                            ->displayFormat('Y年m月d日')
+                                            ->placeholder('请选择可用日期')
+                                            ->helperText('灰色日期表示已被占用，选择可用日期后才能输入确认密码')
+                                            ->disabledDates($usedDates)
+                                            ->validationMessages([
+                                                'required' => '请选择结余日期',
+                                                'after_or_equal' => '该日期不可用，请选择其他日期',
+                                            ])
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, callable $set) use ($usedDates) {
+                                                // 检查选择的日期是否在禁用列表中
+                                                if ($state && in_array($state, $usedDates)) {
+                                                    Notification::make()
+                                                        ->title('日期不可用')
+                                                        ->warning()
+                                                        ->body('该日期已有结余记录，请选择其他日期')
+                                                        ->send();
+                                                    $set('settlement_date', null);
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                                
                                 \Filament\Forms\Components\Section::make('安全确认')
                                     ->schema([
                                         \Filament\Forms\Components\TextInput::make('password')
@@ -267,7 +325,9 @@ class ListSettlements extends ListRecords
                                                 'required' => '请输入确认密码',
                                             ])
                                             ->columnSpanFull(),
-                                    ]),
+                                    ])
+                                    ->hidden(fn (callable $get) => !$get('settlement_date'))
+                                    ->description('已选择日期，请输入密码确认结余'),
                             ];
                         }),
                 ])
@@ -282,7 +342,8 @@ class ListSettlements extends ListRecords
                             $data['expenses'] ?? [],
                             $data['notes'] ?? null,
                             $userId,
-                            $userType
+                            $userType,
+                            $data['settlement_date'] ?? null  // 传入选择的日期
                         );
                         
                         Notification::make()
@@ -315,19 +376,7 @@ class ListSettlements extends ListRecords
                 ->modalSubmitActionLabel('确认执行结余')
                 ->modalCancelActionLabel('取消')
                 ->before(function (SettlementService $settlementService, Actions\Action $action) {
-                    // 1. 检查今日是否已结余
-                    if (\App\Models\Settlement::hasSettledToday()) {
-                        Notification::make()
-                            ->title('无法执行结余')
-                            ->warning()
-                            ->body('今日已完成结余，无法重复操作')
-                            ->send();
-                        
-                        $action->halt();
-                        return;
-                    }
-                    
-                    // 2. 检查是否有未结余的交易
+                    // 检查是否有未结余的交易
                     $preview = $settlementService->getPreview();
                     
                     if (!$preview['can_settle']) {
