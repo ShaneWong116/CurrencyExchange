@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Channel;
 use App\Models\Setting;
 use App\Models\BalanceAdjustment;
+use App\Models\CurrentStatistic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -311,7 +312,10 @@ class SettlementService
                 'settlement_date' => $settlement->settlement_date,
             ]);
             
-            // 13. 创建本金调整记录（结算类型）
+            // 13. 清空当前统计表(因为所有交易都已结算)
+            CurrentStatistic::clearAll();
+            
+            // 14. 创建本金调整记录（结算类型）
             BalanceAdjustment::createCapitalAdjustment(
                 $newCapital,
                 'settlement',
@@ -325,7 +329,7 @@ class SettlementService
                 $userId
             );
             
-            // 14. 创建港币余额调整记录（结算类型）
+            // 15. 创建港币余额调整记录（结算类型）
             BalanceAdjustment::createHkdBalanceAdjustment(
                 afterAmount: $newHkdBalance,
                 adjustmentType: 'settlement',

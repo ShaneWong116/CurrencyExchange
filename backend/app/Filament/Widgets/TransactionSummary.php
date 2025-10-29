@@ -17,12 +17,17 @@ class TransactionSummary extends BaseWidget
 
     protected function getStats(): array
     {
-        $activeTab = request()->query('activeTab', 'all');
+        $activeTab = request()->query('activeTab', 'unsettled');
 
+        // 根据当前标签页筛选数据
         $base = Transaction::query();
-
-        if ($activeTab === 'today') {
-            $base = $base->whereDate('created_at', today());
+        
+        if ($activeTab === 'settled') {
+            // 已结算标签页:显示已结算的记录
+            $base = $base->where('settlement_status', 'settled');
+        } else {
+            // 其他标签页:只显示未结算的记录
+            $base = $base->where('settlement_status', 'unsettled');
         }
 
         // 统计收入与支出（人民币/港币分别求和）

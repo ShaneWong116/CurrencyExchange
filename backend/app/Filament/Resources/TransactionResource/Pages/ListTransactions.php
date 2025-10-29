@@ -31,11 +31,17 @@ class ListTransactions extends ListRecords
 
     protected function getTableHeader(): View
     {
-        $activeTab = request()->query('activeTab', 'all');
+        $activeTab = request()->query('activeTab', 'unsettled');
 
+        // 根据当前标签页筛选数据
         $base = Transaction::query();
-        if ($activeTab === 'today') {
-            $base = $base->whereDate('created_at', today());
+        
+        if ($activeTab === 'settled') {
+            // 已结算标签页:显示已结算的记录
+            $base = $base->where('settlement_status', 'settled');
+        } else {
+            // 其他标签页:只显示未结算的记录
+            $base = $base->where('settlement_status', 'unsettled');
         }
 
         $incomeRmb = (float) (clone $base)->where('type', 'income')->sum('rmb_amount');
@@ -55,20 +61,21 @@ class ListTransactions extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('全部')
-                ->badge(fn (): int => $this->getModel()::count()),
-
-            'today' => Tab::make('今日')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereDate('created_at', today()))
-                ->badge(fn (): int => $this->getModel()::whereDate('created_at', today())->count()),
+            'unsettled' => Tab::make('未结算')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('settlement_status', 'unsettled'))
+                ->badge(fn (): int => $this->getModel()::where('settlement_status', 'unsettled')->count()),
 
             'income' => Tab::make('入账')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'income'))
-                ->badge(fn (): int => $this->getModel()::where('type', 'income')->count()),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('settlement_status', 'unsettled')->where('type', 'income'))
+                ->badge(fn (): int => $this->getModel()::where('settlement_status', 'unsettled')->where('type', 'income')->count()),
 
             'outcome' => Tab::make('出账')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'outcome'))
-                ->badge(fn (): int => $this->getModel()::where('type', 'outcome')->count()),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('settlement_status', 'unsettled')->where('type', 'outcome'))
+                ->badge(fn (): int => $this->getModel()::where('settlement_status', 'unsettled')->where('type', 'outcome')->count()),
+
+            'settled' => Tab::make('已结算')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('settlement_status', 'settled'))
+                ->badge(fn (): int => $this->getModel()::where('settlement_status', 'settled')->count()),
         ];
     }
 }

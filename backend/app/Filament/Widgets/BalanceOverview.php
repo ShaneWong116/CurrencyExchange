@@ -47,34 +47,12 @@ class BalanceOverview extends BaseWidget
         // 获取港币结余（从余额调整记录中获取最新值）
         $hkdBalance = BalanceAdjustment::getCurrentHkdBalance();
         
-        // 计算人民币余额
-        // = 各渠道人民币余额汇总 + 未结算交易的人民币入账 - 未结算交易的人民币出账
-        
-        // 1. 各渠道人民币余额汇总
-        $channelRmbBalance = Channel::where('status', 'active')
+        // 计算人民币余额：各渠道人民币余额汇总
+        $rmbBalance = Channel::where('status', 'active')
             ->get()
             ->sum(function ($channel) {
                 return $channel->getRmbBalance();
             });
-        
-        // 2. 未结算交易的人民币入账（按地点筛选）
-        $unsettledRmbIncomeQuery = \App\Models\Transaction::where('settlement_status', 'unsettled')
-            ->where('type', 'income');
-        if ($locationId) {
-            $unsettledRmbIncomeQuery->where('location_id', $locationId);
-        }
-        $unsettledRmbIncome = $unsettledRmbIncomeQuery->sum('rmb_amount');
-        
-        // 3. 未结算交易的人民币出账（按地点筛选）
-        $unsettledRmbOutcomeQuery = \App\Models\Transaction::where('settlement_status', 'unsettled')
-            ->where('type', 'outcome');
-        if ($locationId) {
-            $unsettledRmbOutcomeQuery->where('location_id', $locationId);
-        }
-        $unsettledRmbOutcome = $unsettledRmbOutcomeQuery->sum('rmb_amount');
-        
-        // 总人民币余额
-        $rmbBalance = $channelRmbBalance + $unsettledRmbIncome - $unsettledRmbOutcome;
 
         return [
             Stat::make('本金', 'HK$' . number_format($capital, 2))

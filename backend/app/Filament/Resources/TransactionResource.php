@@ -238,6 +238,13 @@ class TransactionResource extends Resource
                         'failed' => '失败',
                     ]),
                     
+                SelectFilter::make('settlement_status')
+                    ->label('结算状态')
+                    ->options([
+                        'unsettled' => '未结算',
+                        'settled' => '已结算',
+                    ]),
+                    
                 Tables\Filters\Filter::make('created_at')
                     ->form([
                         Forms\Components\DatePicker::make('created_from')

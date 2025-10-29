@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\Channel;
+use App\Models\ChannelBalance;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class TransactionController extends Controller
 {
@@ -94,12 +96,18 @@ class TransactionController extends Controller
                 'location' => $request->location,
                 'notes' => $request->notes,
                 'status' => 'success',
+                'settlement_status' => 'unsettled',
                 'submit_time' => now(),
             ]);
 
             // 更新渠道交易计数
             $channel = Channel::find($request->channel_id);
             $channel->incrementTransactionCount();
+
+            // 更新渠道余额(入账/出账会影响余额)
+            if (in_array($request->type, ['income', 'outcome'])) {
+                $this->updateChannelBalance($transaction);
+            }
 
             DB::commit();
 
@@ -184,12 +192,18 @@ class TransactionController extends Controller
                     'location' => $transactionData['location'] ?? null,
                     'notes' => $transactionData['notes'] ?? null,
                     'status' => 'success',
+                    'settlement_status' => 'unsettled',
                     'submit_time' => now(),
                 ]);
 
                 // 更新渠道交易计数
                 $channel = Channel::find($transactionData['channel_id']);
                 $channel->incrementTransactionCount();
+
+                // 更新渠道余额(入账/出账会影响余额)
+                if (in_array($transactionData['type'], ['income', 'outcome'])) {
+                    $this->updateChannelBalance($transaction);
+                }
 
                 $results[] = [
                     'uuid' => $transactionData['uuid'],
@@ -300,6 +314,81 @@ class TransactionController extends Controller
                 'total_rmb' => round($totalRmb, 2),
                 'total_hkd' => round($totalHkd, 2),
             ],
+        ]);
+    }
+
+    /**
+     * 更新渠道余额(入账/出账交易时实时更新)
+     */
+    private function updateChannelBalance(Transaction $transaction)
+    {
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+        
+        // 获取昨天的余额作为今天的初始余额
+        $previousRmbBalance = ChannelBalance::where('channel_id', $transaction->channel_id)
+            ->where('currency', 'RMB')
+            ->where('date', $yesterday)
+            ->first();
+        $rmbInitialAmount = $previousRmbBalance ? $previousRmbBalance->current_balance : 0;
+        
+        $previousHkdBalance = ChannelBalance::where('channel_id', $transaction->channel_id)
+            ->where('currency', 'HKD')
+            ->where('date', $yesterday)
+            ->first();
+        $hkdInitialAmount = $previousHkdBalance ? $previousHkdBalance->current_balance : 0;
+        
+        // 计算今日所有交易的汇总(重新统计,保证准确性)
+        $todayRmbIncome = Transaction::where('channel_id', $transaction->channel_id)
+            ->where('type', 'income')
+            ->whereDate('created_at', $today)
+            ->sum('rmb_amount');
+            
+        $todayRmbOutcome = Transaction::where('channel_id', $transaction->channel_id)
+            ->where('type', 'outcome')
+            ->whereDate('created_at', $today)
+            ->sum('rmb_amount');
+            
+        $todayHkdIncome = Transaction::where('channel_id', $transaction->channel_id)
+            ->where('type', 'income')
+            ->whereDate('created_at', $today)
+            ->sum('hkd_amount');
+            
+        $todayHkdOutcome = Transaction::where('channel_id', $transaction->channel_id)
+            ->where('type', 'outcome')
+            ->whereDate('created_at', $today)
+            ->sum('hkd_amount');
+        
+        // 入账/出账方向：入账 RMB+、HKD-；出账 RMB-、HKD+
+        $rmbNetChange = $todayRmbIncome - $todayRmbOutcome;
+        $hkdNetChange = -$todayHkdIncome + $todayHkdOutcome;
+        
+        // 计算当前余额
+        $rmbCurrentBalance = $rmbInitialAmount + $rmbNetChange;
+        $hkdCurrentBalance = $hkdInitialAmount + $hkdNetChange;
+        
+        // 更新或创建RMB余额记录
+        ChannelBalance::updateOrCreate([
+            'channel_id' => $transaction->channel_id,
+            'currency' => 'RMB',
+            'date' => $today,
+        ], [
+            'initial_amount' => $rmbInitialAmount,
+            'income_amount' => $todayRmbIncome,
+            'outcome_amount' => $todayRmbOutcome,
+            'current_balance' => $rmbCurrentBalance,
+        ]);
+        
+        // 更新或创建HKD余额记录
+        ChannelBalance::updateOrCreate([
+            'channel_id' => $transaction->channel_id,
+            'currency' => 'HKD',
+            'date' => $today,
+        ], [
+            'initial_amount' => $hkdInitialAmount,
+            'income_amount' => $todayHkdIncome,
+            'outcome_amount' => $todayHkdOutcome,
+            'current_balance' => $hkdCurrentBalance,
         ]);
     }
 }

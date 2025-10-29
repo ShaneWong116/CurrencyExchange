@@ -37,17 +37,17 @@ class PrimaryNetInflow extends Widget
         $locationId = $this->getLocationId();
 
         if ($locationId) {
-            // 按地点筛选时,直接查询交易表
-            $baseQuery = Transaction::whereDate('created_at', today())
+            // 按地点筛选时,直接查询交易表(只查询未结算的)
+            $baseQuery = Transaction::where('settlement_status', 'unsettled')
                 ->where('location_id', $locationId);
 
             $rmbIncome = (clone $baseQuery)->where('type', 'income')->sum('rmb_amount');
             $rmbOutcome = (clone $baseQuery)->where('type', 'outcome')->sum('rmb_amount');
-            $rmbInstantBuyout = (clone $baseQuery)->where('transaction_label', '即时买断')->sum('rmb_amount');
+            $rmbInstantBuyout = (clone $baseQuery)->where('type', 'instant_buyout')->sum('rmb_amount');
 
             $hkdIncome = (clone $baseQuery)->where('type', 'outcome')->sum('hkd_amount');
             $hkdOutcome = (clone $baseQuery)->where('type', 'income')->sum('hkd_amount');
-            $hkdInstantBuyout = (clone $baseQuery)->where('transaction_label', '即时买断')->sum('hkd_amount');
+            $hkdInstantBuyout = (clone $baseQuery)->where('type', 'instant_buyout')->sum('hkd_amount');
 
             $todayRmbIncome = $rmbIncome + $rmbInstantBuyout;
             $todayRmbOutcome = $rmbOutcome + $rmbInstantBuyout;

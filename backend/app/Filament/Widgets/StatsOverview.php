@@ -39,23 +39,24 @@ class StatsOverview extends BaseWidget
         $locationId = $this->getLocationId();
 
         if ($locationId) {
-            // 按地点筛选时,直接查询交易表
-            $todayQuery = Transaction::whereDate('created_at', today())
+            // 按地点筛选时,直接查询交易表(只查询未结算的)
+            $todayQuery = Transaction::where('settlement_status', 'unsettled')
                 ->where('location_id', $locationId);
 
             $todayTransactions = (clone $todayQuery)->count();
             $todayIncome = (clone $todayQuery)->where('type', 'income')->count();
             $todayOutcome = (clone $todayQuery)->where('type', 'outcome')->count();
-            $todayInstantBuyout = (clone $todayQuery)->where('transaction_label', '即时买断')->count();
+            $todayInstantBuyout = (clone $todayQuery)->where('type', 'instant_buyout')->count();
 
             // 草稿数量（按用户的地点筛选）
             $totalDrafts = TransactionDraft::whereHas('user', function($query) use ($locationId) {
                 $query->where('location_id', $locationId);
             })->count();
 
-            // 本月金额统计（按地点筛选）
+            // 本月金额统计（按地点筛选,只统计未结算的）
             $monthlyQuery = Transaction::whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
+                ->where('settlement_status', 'unsettled')
                 ->where('location_id', $locationId);
 
             $monthlyRmb = (clone $monthlyQuery)->sum('rmb_amount');
@@ -72,12 +73,14 @@ class StatsOverview extends BaseWidget
             // 草稿数量（不频繁变化，保留原查询）
             $totalDrafts = TransactionDraft::count();
             
-            // 本月金额统计（需要单独查询，因为统计表只记录当前周期）
+            // 本月金额统计（需要单独查询，因为统计表只记录当前周期,只统计未结算的）
             $monthlyRmb = Transaction::whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
+                ->where('settlement_status', 'unsettled')
                 ->sum('rmb_amount');
             $monthlyHkd = Transaction::whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
+                ->where('settlement_status', 'unsettled')
                 ->sum('hkd_amount');
         }
 
