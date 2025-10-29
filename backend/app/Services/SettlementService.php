@@ -7,8 +7,7 @@ use App\Models\SettlementExpense;
 use App\Models\Transaction;
 use App\Models\Channel;
 use App\Models\Setting;
-use App\Models\CapitalAdjustment;
-use App\Models\HkdBalanceAdjustment;
+use App\Models\BalanceAdjustment;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -54,8 +53,8 @@ class SettlementService
     public function getPreview($instantBuyoutRate = null)
     {
         // 1. 获取当前本金和港币结余
-        $currentCapital = CapitalAdjustment::getCurrentCapital();
-        $currentHkdBalance = (float) Setting::get('hkd_balance', 0);
+        $currentCapital = BalanceAdjustment::getCurrentCapital();
+        $currentHkdBalance = BalanceAdjustment::getCurrentHkdBalance();
         
         // 2. 计算当前各渠道人民币余额汇总
         $channels = Channel::all();
@@ -249,7 +248,7 @@ class SettlementService
             ]);
             
             // 11. 创建本金调整记录（结算类型）
-            CapitalAdjustment::createAdjustment(
+            BalanceAdjustment::createCapitalAdjustment(
                 $newCapital,
                 'settlement',
                 sprintf(
@@ -263,7 +262,7 @@ class SettlementService
             );
             
             // 12. 创建港币余额调整记录（结算类型）
-            HkdBalanceAdjustment::createAdjustment(
+            BalanceAdjustment::createHkdBalanceAdjustment(
                 afterAmount: $newHkdBalance,
                 adjustmentType: 'settlement',
                 reason: sprintf(

@@ -66,11 +66,19 @@ class Settlement extends Model
     }
 
     /**
-     * 关联到本金调整记录
+     * 关联到余额调整记录（包括本金、港币余额等）
+     */
+    public function balanceAdjustments()
+    {
+        return $this->hasMany(BalanceAdjustment::class);
+    }
+    
+    /**
+     * 关联到本金调整记录（向后兼容）
      */
     public function capitalAdjustments()
     {
-        return $this->hasMany(CapitalAdjustment::class);
+        return $this->balanceAdjustments()->where('adjustment_category', 'capital');
     }
 
     /**

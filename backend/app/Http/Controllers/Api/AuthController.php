@@ -47,6 +47,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'username' => $user->username,
                 'name' => $user->name,
+                'location_id' => $user->location_id,
                 'status' => $user->status,
             ],
             'access_token' => $accessToken,
@@ -90,6 +91,7 @@ class AuthController extends Controller
             'id' => $user->id,
             'username' => $user->username,
             'name' => $user->name,
+            'location_id' => $user->location_id,
             'status' => $user->status,
             'last_login_at' => $user->last_login_at,
         ]);

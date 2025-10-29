@@ -2,16 +2,32 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\CurrentStatistic;
 use App\Models\Transaction;
 use App\Models\TransactionDraft;
-use App\Models\FieldUser;
-use App\Models\Channel;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatsOverview extends BaseWidget
 {
     protected static ?int $sort = 3;
+
+    // 接收父页面传递的 location filter
+    public ?string $locationFilter = 'all';
+
+    protected $listeners = [
+        'locationFilterChanged' => 'updateLocationFilter',
+    ];
+
+    public function updateLocationFilter($locationId): void
+    {
+        $this->locationFilter = $locationId;
+    }
+
+    protected function getLocationId(): ?int
+    {
+        return $this->locationFilter === 'all' ? null : (int) $this->locationFilter;
+    }
     
     protected function getColumns(): int
     {
@@ -20,49 +36,54 @@ class StatsOverview extends BaseWidget
     
     protected function getStats(): array
     {
-        $today = today();
-        
-        // 今日交易统计
-        $todayTransactions = Transaction::whereDate('created_at', $today)->count();
-        $todayIncome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'income')->count();
-        $todayOutcome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'outcome')->count();
-        $todayExchange = Transaction::whereDate('created_at', $today)
-            ->where('type', 'exchange')->count();
-            
-        // 总计统计
-        $totalTransactions = Transaction::count();
-        $totalDrafts = TransactionDraft::count();
-        $activeUsers = FieldUser::where('status', 'active')->count();
-        $activeChannels = Channel::where('status', 'active')->count();
-        
-        // 本月金额统计
-        $monthlyRmb = Transaction::whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('rmb_amount');
-        $monthlyHkd = Transaction::whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('hkd_amount');
+        $locationId = $this->getLocationId();
 
-        // 今日金额统计
-        $todayRmbIncome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'income')
-            ->sum('rmb_amount');
-        $todayRmbOutcome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'outcome')
-            ->sum('rmb_amount');
-        $todayHkdIncome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'income')
-            ->sum('hkd_amount');
-        $todayHkdOutcome = Transaction::whereDate('created_at', $today)
-            ->where('type', 'outcome')
-            ->sum('hkd_amount');
+        if ($locationId) {
+            // 按地点筛选时,直接查询交易表
+            $todayQuery = Transaction::whereDate('created_at', today())
+                ->where('location_id', $locationId);
+
+            $todayTransactions = (clone $todayQuery)->count();
+            $todayIncome = (clone $todayQuery)->where('type', 'income')->count();
+            $todayOutcome = (clone $todayQuery)->where('type', 'outcome')->count();
+            $todayInstantBuyout = (clone $todayQuery)->where('transaction_label', '即时买断')->count();
+
+            // 草稿数量（按用户的地点筛选）
+            $totalDrafts = TransactionDraft::whereHas('user', function($query) use ($locationId) {
+                $query->where('location_id', $locationId);
+            })->count();
+
+            // 本月金额统计（按地点筛选）
+            $monthlyQuery = Transaction::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->where('location_id', $locationId);
+
+            $monthlyRmb = (clone $monthlyQuery)->sum('rmb_amount');
+            $monthlyHkd = (clone $monthlyQuery)->sum('hkd_amount');
+        } else {
+            // 总览时,从统计表获取今日数据
+            $stats = CurrentStatistic::getDashboardStats();
+            
+            $todayTransactions = $stats['transaction_count'];
+            $todayIncome = $stats['income_count'];
+            $todayOutcome = $stats['outcome_count'];
+            $todayInstantBuyout = $stats['instant_buyout_count'];
+            
+            // 草稿数量（不频繁变化，保留原查询）
+            $totalDrafts = TransactionDraft::count();
+            
+            // 本月金额统计（需要单独查询，因为统计表只记录当前周期）
+            $monthlyRmb = Transaction::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('rmb_amount');
+            $monthlyHkd = Transaction::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->sum('hkd_amount');
+        }
 
         return [
-            // 仅保留四个次要统计
             Stat::make('今日交易', $todayTransactions)
-                ->description("入账: {$todayIncome} | 出账: {$todayOutcome} | 兑换: {$todayExchange}")
+                ->description("入账: {$todayIncome} | 出账: {$todayOutcome} | 即时买断: {$todayInstantBuyout}")
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
                 
@@ -80,7 +101,6 @@ class StatsOverview extends BaseWidget
                 ->description('本月交易总额')
                 ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color('info'),
-            // 可按地点扩展：在 LocationOverview 小部件中实现
         ];
     }
 }

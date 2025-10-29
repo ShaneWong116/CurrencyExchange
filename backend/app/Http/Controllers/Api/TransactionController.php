@@ -71,6 +71,15 @@ class TransactionController extends Controller
         DB::beginTransaction();
         try {
             $user = $request->user();
+            
+            // 计算即时买断利润
+            $instantProfit = null;
+            if ($request->type === 'instant_buyout' && $request->instant_rate) {
+                // 利润 = 人民币金额 ÷ 即时买断汇率 - 港币金额,保留十位向上取整
+                $profit = ($request->rmb_amount / $request->instant_rate) - $request->hkd_amount;
+                $instantProfit = ceil($profit / 10) * 10;
+            }
+            
             $transaction = Transaction::create([
                 'uuid' => $request->uuid ?: \Illuminate\Support\Str::uuid(),
                 'user_id' => $user->id,
@@ -79,6 +88,7 @@ class TransactionController extends Controller
                 'hkd_amount' => $request->hkd_amount,
                 'exchange_rate' => $request->exchange_rate,
                 'instant_rate' => $request->instant_rate,
+                'instant_profit' => $instantProfit,
                 'channel_id' => $request->channel_id,
                 'location_id' => $request->location_id ?: $user->location_id,
                 'location' => $request->location,
@@ -152,6 +162,14 @@ class TransactionController extends Controller
                     continue;
                 }
 
+                // 计算即时买断利润
+                $instantProfit = null;
+                if ($transactionData['type'] === 'instant_buyout' && !empty($transactionData['instant_rate'])) {
+                    // 利润 = 人民币金额 ÷ 即时买断汇率 - 港币金额,保留十位向上取整
+                    $profit = ($transactionData['rmb_amount'] / $transactionData['instant_rate']) - $transactionData['hkd_amount'];
+                    $instantProfit = ceil($profit / 10) * 10;
+                }
+                
                 $transaction = Transaction::create([
                     'uuid' => $transactionData['uuid'],
                     'user_id' => $userId,
@@ -160,6 +178,7 @@ class TransactionController extends Controller
                     'hkd_amount' => $transactionData['hkd_amount'],
                     'exchange_rate' => $transactionData['exchange_rate'],
                     'instant_rate' => $transactionData['instant_rate'] ?? null,
+                    'instant_profit' => $instantProfit,
                     'channel_id' => $transactionData['channel_id'],
                     'location_id' => $transactionData['location_id'] ?? $user->location_id,
                     'location' => $transactionData['location'] ?? null,

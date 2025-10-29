@@ -31,13 +31,58 @@ class BalanceAdjustmentResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('调整信息')
+                Forms\Components\Section::make('调整分类')
+                    ->schema([
+                        Forms\Components\Select::make('adjustment_category')
+                            ->label('调整类型')
+                            ->options([
+                                'capital' => '本金',
+                                'channel' => '渠道余额',
+                                'hkd_balance' => '港币余额',
+                            ])
+                            ->default('channel')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (callable $set, $state) {
+                                // 重置相关字段
+                                $set('channel_id', null);
+                                $set('currency', null);
+                                $set('before_amount', null);
+                                $set('after_amount', null);
+                                $set('adjustment_amount', null);
+                                
+                                // 根据分类设置默认值
+                                if ($state === 'capital') {
+                                    $set('currency', 'HKD');
+                                    $set('before_amount', BalanceAdjustment::getCurrentCapital());
+                                } elseif ($state === 'hkd_balance') {
+                                    $set('currency', 'HKD');
+                                    $set('before_amount', BalanceAdjustment::getCurrentHkdBalance());
+                                }
+                            }),
+                            
+                        Forms\Components\Placeholder::make('current_value_display')
+                            ->label(fn (Forms\Get $get) => match($get('adjustment_category')) {
+                                'capital' => '当前系统本金',
+                                'hkd_balance' => '当前港币余额',
+                                default => '',
+                            })
+                            ->content(fn (Forms\Get $get) => match($get('adjustment_category')) {
+                                'capital' => 'HK$ ' . number_format(BalanceAdjustment::getCurrentCapital(), 2),
+                                'hkd_balance' => 'HK$ ' . number_format(BalanceAdjustment::getCurrentHkdBalance(), 2),
+                                default => '',
+                            })
+                            ->extraAttributes(['class' => 'text-2xl font-bold text-primary-600'])
+                            ->visible(fn (Forms\Get $get) => in_array($get('adjustment_category'), ['capital', 'hkd_balance'])),
+                    ])->columns(2),
+                    
+                Forms\Components\Section::make('渠道信息')
                     ->schema([
                         Forms\Components\Select::make('channel_id')
                             ->label('支付渠道')
                             ->options(Channel::active()->pluck('name', 'id'))
                             ->required()
-                            ->reactive()
+                            ->live()
                             ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
                                 if ($state) {
                                     $channel = Channel::find($state);
@@ -45,7 +90,6 @@ class BalanceAdjustmentResource extends Resource
                                         $set('rmb_current_balance', $channel->getRmbBalance());
                                         $set('hkd_current_balance', $channel->getHkdBalance());
                                         
-                                        // 同时更新 before_amount
                                         $currency = $get('currency');
                                         if ($currency) {
                                             $currentBalance = $currency === 'RMB' 
@@ -64,7 +108,7 @@ class BalanceAdjustmentResource extends Resource
                                 'HKD' => '港币',
                             ])
                             ->required()
-                            ->reactive()
+                            ->live()
                             ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
                                 $channelId = $get('channel_id');
                                 if ($channelId && $state) {
@@ -91,7 +135,9 @@ class BalanceAdjustmentResource extends Resource
                             ->numeric()
                             ->disabled()
                             ->visible(fn (Forms\Get $get) => $get('currency') === 'HKD'),
-                    ])->columns(2),
+                    ])
+                    ->columns(2)
+                    ->visible(fn (Forms\Get $get) => $get('adjustment_category') === 'channel'),
                     
                 Forms\Components\Section::make('调整详情')
                     ->schema([
@@ -100,7 +146,21 @@ class BalanceAdjustmentResource extends Resource
                             ->numeric()
                             ->disabled()
                             ->dehydrated(true)
-                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币'),
+                            ->suffix(fn (Forms\Get $get) => match($get('adjustment_category')) {
+                                'capital', 'hkd_balance' => '港币',
+                                'channel' => $get('currency') === 'RMB' ? '元' : '港币',
+                                default => '',
+                            })
+                            ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, Forms\Get $get) {
+                                if ($state === null) {
+                                    $category = $get('adjustment_category');
+                                    if ($category === 'capital') {
+                                        $component->state(BalanceAdjustment::getCurrentCapital());
+                                    } elseif ($category === 'hkd_balance') {
+                                        $component->state(BalanceAdjustment::getCurrentHkdBalance());
+                                    }
+                                }
+                            }),
                             
                         Forms\Components\TextInput::make('after_amount')
                             ->label('调整后金额')
@@ -108,7 +168,11 @@ class BalanceAdjustmentResource extends Resource
                             ->numeric()
                             ->required()
                             ->live(onBlur: true)
-                            ->suffix(fn (Forms\Get $get) => $get('currency') === 'RMB' ? '元' : '港币')
+                            ->suffix(fn (Forms\Get $get) => match($get('adjustment_category')) {
+                                'capital', 'hkd_balance' => '港币',
+                                'channel' => $get('currency') === 'RMB' ? '元' : '港币',
+                                default => '',
+                            })
                             ->afterStateUpdated(function (callable $set, $state, Forms\Get $get) {
                                 if ($state === null || $state === '') {
                                     return;
@@ -119,6 +183,17 @@ class BalanceAdjustmentResource extends Resource
                                     $set('adjustment_amount', $adjustmentAmount);
                                 }
                             }),
+                            
+                        Forms\Components\Select::make('type')
+                            ->label('调整类型')
+                            ->options([
+                                'manual' => '手动调整',
+                                'system' => '系统调整',
+                            ])
+                            ->default('manual')
+                            ->required()
+                            ->disabled(fn (string $context) => $context === 'edit')
+                            ->visible(fn (Forms\Get $get) => in_array($get('adjustment_category'), ['capital', 'hkd_balance'])),
                             
                         Forms\Components\Textarea::make('reason')
                             ->label('调整原因')
@@ -137,10 +212,29 @@ class BalanceAdjustmentResource extends Resource
                     ->label('ID')
                     ->sortable(),
                     
+                TextColumn::make('adjustment_category')
+                    ->label('调整分类')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'capital' => 'primary',
+                        'channel' => 'success',
+                        'hkd_balance' => 'info',
+                        default => 'secondary',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'capital' => '本金',
+                        'channel' => '渠道余额',
+                        'hkd_balance' => '港币余额',
+                        default => $state,
+                    })
+                    ->sortable(),
+                    
                 TextColumn::make('channel.name')
                     ->label('支付渠道')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('-')
+                    ->toggleable(),
                     
                 TextColumn::make('currency')
                     ->label('货币')
@@ -176,7 +270,14 @@ class BalanceAdjustmentResource extends Resource
                     ->label('调整后')
                     ->numeric(2)
                     ->prefix(fn (BalanceAdjustment $record): string => $record->currency === 'RMB' ? '¥' : 'HK$')
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
+                    
+                TextColumn::make('settlement.settlement_number')
+                    ->label('关联结算')
+                    ->searchable()
+                    ->toggleable()
+                    ->placeholder('-'),
                     
                 TextColumn::make('type')
                     ->label('类型')
@@ -211,6 +312,14 @@ class BalanceAdjustmentResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('adjustment_category')
+                    ->label('调整分类')
+                    ->options([
+                        'capital' => '本金',
+                        'channel' => '渠道余额',
+                        'hkd_balance' => '港币余额',
+                    ]),
+                    
                 SelectFilter::make('channel')
                     ->label('支付渠道')
                     ->relationship('channel', 'name'),
@@ -256,6 +365,16 @@ class BalanceAdjustmentResource extends Resource
     {
         $u = auth()->user();
         return $u instanceof \App\Models\User && ($u->isAdmin() || $u->isFinance());
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false; // 余额调整记录不允许编辑
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false; // 余额调整记录不允许删除
     }
 
     public static function canViewAny(): bool

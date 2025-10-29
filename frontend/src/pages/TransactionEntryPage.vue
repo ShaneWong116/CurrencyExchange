@@ -150,6 +150,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTransactionStore } from '@/stores/transaction'
 import { useDraftStore } from '@/stores/draft'
+import { useAuthStore } from '@/stores/auth'
 import { Dialog, Notify } from 'quasar'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -157,6 +158,7 @@ const route = useRoute()
 const router = useRouter()
 const transactionStore = useTransactionStore()
 const draftStore = useDraftStore()
+const authStore = useAuthStore()
 
 const isEditing = computed(() => route.name === 'DraftEdit' || !!route.params.id)
 
@@ -296,6 +298,7 @@ const toBackendPayload = () => {
     exchange_rate: form.value.exchangeRate,
     instant_rate: form.value.instantRate,
     channel_id: form.value.channelId,
+    location_id: authStore.user?.location_id || null,
     notes: form.value.remarks
   }
   

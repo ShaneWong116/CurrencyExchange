@@ -54,48 +54,23 @@ class Channel extends Model
     }
 
     /**
-     * 获取指定货币的当前余额（动态计算：昨日余额 + 今日交易净额 + 今日手动调整）
+     * 获取指定货币的当前余额（从余额表读取最新记录）
+     * 余额是累积值，直接读取最新的 current_balance
      */
     public function getCurrentBalance($currency)
     {
-        $today = now()->toDateString();
-        $yesterday = now()->copy()->subDay()->toDateString();
-
-        // 昨日收盘余额（作为今日初始额）
-        $yesterdayBalance = $this->balances()
+        // 获取该渠道该货币的最新余额记录
+        $balance = $this->balances()
             ->where('currency', $currency)
-            ->where('date', $yesterday)
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
             ->first();
-        $initialAmount = $yesterdayBalance ? (float) $yesterdayBalance->current_balance : 0.0;
-
-        // 今日交易净额（按方向规则）：入账 RMB+、HKD-；出账 RMB-、HKD+
-        // 注意：即时买断交易(instant_buyout)不影响余额，因为是立即买入卖出
-        if ($currency === 'RMB') {
-            $netExpr = 'SUM(CASE WHEN type = "income" THEN rmb_amount WHEN type = "outcome" THEN -rmb_amount ELSE 0 END) as net';
-        } else { // HKD
-            $netExpr = 'SUM(CASE WHEN type = "income" THEN -hkd_amount WHEN type = "outcome" THEN hkd_amount ELSE 0 END) as net';
-        }
-        $todayNetFromTransactions = (float) $this->transactions()
-            ->whereDate('created_at', $today)
-            ->whereIn('type', ['income', 'outcome']) // 排除即时买断和兑换交易
-            ->selectRaw($netExpr)
-            ->value('net');
-
-        // 今日手动调整净额（如有）
-        if (method_exists($this, 'balanceAdjustments')) {
-            $todayAdjustments = (float) $this->balanceAdjustments()
-                ->where('currency', $currency)
-                ->whereDate('created_at', $today)
-                ->sum('adjustment_amount');
-        } else {
-            $todayAdjustments = 0.0;
-        }
-
-        return $initialAmount + $todayNetFromTransactions + $todayAdjustments;
+        
+        return $balance ? (float) $balance->current_balance : 0.0;
     }
 
     /**
-     * 获取RMB余额
+     * 获取RMB余额（直接读取）
      */
     public function getRmbBalance()
     {
@@ -103,7 +78,7 @@ class Channel extends Model
     }
 
     /**
-     * 获取HKD余额
+     * 获取HKD余额（直接读取）
      */
     public function getHkdBalance()
     {

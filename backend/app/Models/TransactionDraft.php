@@ -61,6 +61,9 @@ class TransactionDraft extends Model
 
     public function convertToTransaction()
     {
+        // 如果草稿没有 location_id,自动使用用户的 location_id
+        $locationId = $this->location_id ?: $this->user->location_id;
+        
         return Transaction::create([
             'uuid' => $this->uuid,
             'user_id' => $this->user_id,
@@ -71,7 +74,7 @@ class TransactionDraft extends Model
             'exchange_rate' => $this->exchange_rate,
             'instant_rate' => $this->instant_rate,
             'channel_id' => $this->channel_id,
-            'location_id' => $this->location_id,
+            'location_id' => $locationId,
             'location' => $this->location,
             'notes' => $this->notes,
         ]);

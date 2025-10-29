@@ -49,6 +49,34 @@ class Transaction extends Model
                 $transaction->uuid = Str::uuid();
             }
         });
+
+        // 交易创建后更新统计
+        static::created(function ($transaction) {
+            // 更新仪表盘总统计
+            $dashboardStats = CurrentStatistic::getOrCreate('dashboard');
+            $dashboardStats->addTransaction($transaction);
+
+            // 更新渠道统计
+            $channelStats = CurrentStatistic::getOrCreate('channel', $transaction->channel_id);
+            $channelStats->addTransaction($transaction);
+        });
+
+        // 交易删除后更新统计
+        static::deleted(function ($transaction) {
+            // 更新仪表盘总统计
+            $dashboardStats = CurrentStatistic::where('stat_type', 'dashboard')->first();
+            if ($dashboardStats) {
+                $dashboardStats->removeTransaction($transaction);
+            }
+
+            // 更新渠道统计
+            $channelStats = CurrentStatistic::where('stat_type', 'channel')
+                ->where('reference_id', $transaction->channel_id)
+                ->first();
+            if ($channelStats) {
+                $channelStats->removeTransaction($transaction);
+            }
+        });
     }
 
     public function user()

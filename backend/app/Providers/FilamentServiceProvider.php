@@ -41,7 +41,7 @@ class FilamentServiceProvider extends PanelProvider
                 \App\Filament\Resources\SettlementResource::class,
                 \App\Filament\Resources\TransactionDraftResource::class,
                 \App\Filament\Resources\BalanceAdjustmentResource::class,
-                \App\Filament\Resources\CapitalAdjustmentResource::class,
+                // \App\Filament\Resources\CapitalAdjustmentResource::class, // 已合并到 BalanceAdjustmentResource
                 \App\Filament\Resources\ImageResource::class,
                 \App\Filament\Resources\FieldUserResource::class,
                 \App\Filament\Resources\LocationResource::class,
