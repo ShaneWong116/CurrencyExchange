@@ -20004,3 +20004,220 @@
 [Wed Oct 29 20:16:00 2025] 127.0.0.1:58505 [200]: POST /livewire/update
 [Wed Oct 29 20:16:00 2025] 127.0.0.1:58505 Closing
 [Wed Oct 29 20:16:00 2025] 127.0.0.1:64017 Accepted
+[Wed Oct 29 20:16:04 2025] 127.0.0.1:64017 [200]: POST /livewire/update
+[Wed Oct 29 20:16:04 2025] 127.0.0.1:64017 Closing
+[Wed Oct 29 20:16:10 2025] 127.0.0.1:62848 Accepted
+[Wed Oct 29 20:16:10 2025] 127.0.0.1:62848 [200]: POST /livewire/update
+[Wed Oct 29 20:16:10 2025] 127.0.0.1:62848 Closing
+[Wed Oct 29 20:16:10 2025] 127.0.0.1:63835 Accepted
+[Wed Oct 29 20:16:14 2025] 127.0.0.1:63835 [200]: POST /livewire/update
+[Wed Oct 29 20:16:14 2025] 127.0.0.1:63835 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63473 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63473 [200]: GET /admin/data-cleanup-page
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63473 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:58727 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62863 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:58727 [200]: POST /livewire/update
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:58727 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62863 [404]: GET /.well-known/appspecific/com.chrome.devtools.json
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62863 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61079 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:54290 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63771 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61175 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62413 Accepted
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61079 [200]: GET /filament/css/filament/forms/forms.css?v=3.3.31.0
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:54290 [200]: GET /filament/css/filament/support/support.css?v=3.3.31.0
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63771 [200]: GET /filament/css/app/custom-stylesheet.css?v=3.3.31.0
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61175 [200]: GET /filament/css/filament/filament/app.css?v=3.3.31.0
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62413 [200]: GET /filament/custom.css?v=1761213167
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61079 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:54290 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:63771 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:61175 Closing
+[Wed Oct 29 20:16:15 2025] 127.0.0.1:62413 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:54228 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:54228 [200]: GET /filament/js/filament/notifications/notifications.js?v=3.3.31.0
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:54228 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:52152 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:55234 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:62974 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:56497 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:52152 [200]: GET /filament/js/filament/support/support.js?v=3.3.31.0
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:55234 [200]: GET /filament/js/filament/filament/echo.js?v=3.3.31.0
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:62974 [200]: GET /filament/js/filament/filament/app.js?v=3.3.31.0
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:56497 [200]: GET /livewire/livewire.js?id=951e6947
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:56497 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:52152 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:55234 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:62974 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:58293 Accepted
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:58293 [200]: POST /livewire/update
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:58293 Closing
+[Wed Oct 29 20:16:16 2025] 127.0.0.1:50131 Accepted
+[Wed Oct 29 20:16:17 2025] 127.0.0.1:50131 [200]: GET /admin/reports-page
+[Wed Oct 29 20:16:17 2025] 127.0.0.1:50131 Closing
+[Wed Oct 29 20:16:17 2025] 127.0.0.1:57578 Accepted
+[Wed Oct 29 20:16:17 2025] 127.0.0.1:57578 [200]: GET /filament/css/filament/forms/forms.css?v=3.3.31.0
+[Wed Oct 29 20:16:17 2025] 127.0.0.1:57578 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54288 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:65139 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:51152 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:55143 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57597 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54288 [200]: GET /filament/css/filament/support/support.css?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:65139 [200]: GET /filament/css/app/custom-stylesheet.css?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:51152 [200]: GET /filament/css/filament/filament/app.css?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:55143 [200]: GET /filament/custom.css?v=1761213167
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57597 [200]: GET /filament/js/filament/notifications/notifications.js?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54288 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:65139 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:51152 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:55143 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57597 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58986 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58986 [200]: GET /filament/js/filament/support/support.js?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58986 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58850 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57669 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52504 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52920 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58850 [200]: GET /filament/js/filament/filament/echo.js?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57669 [200]: GET /filament/js/filament/filament/app.js?v=3.3.31.0
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52504 [200]: GET /livewire/livewire.js?id=951e6947
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52504 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52920 [404]: GET /.well-known/appspecific/com.chrome.devtools.json
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:52920 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:58850 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:57669 Closing
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54291 Accepted
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54291 [200]: POST /livewire/update
+[Wed Oct 29 20:16:18 2025] 127.0.0.1:54291 Closing
+[Wed Oct 29 20:16:19 2025] 127.0.0.1:52537 Accepted
+[Wed Oct 29 20:16:48 2025] 127.0.0.1:52537 [200]: POST /livewire/update
+[Wed Oct 29 20:16:48 2025] 127.0.0.1:52537 Closing
+[Wed Oct 29 20:17:19 2025] 127.0.0.1:63567 Accepted
+[Wed Oct 29 20:17:19 2025] 127.0.0.1:63567 [200]: POST /livewire/update
+[Wed Oct 29 20:17:19 2025] 127.0.0.1:63567 Closing
+[Wed Oct 29 20:17:19 2025] 127.0.0.1:58535 Accepted
+[Wed Oct 29 20:17:49 2025] 127.0.0.1:58535 [200]: POST /livewire/update
+[Wed Oct 29 20:17:49 2025] 127.0.0.1:58535 Closing
+[Wed Oct 29 20:18:02 2025] 127.0.0.1:59558 Accepted
+[Wed Oct 29 20:18:02 2025] 127.0.0.1:59558 [200]: POST /livewire/update
+[Wed Oct 29 20:18:02 2025] 127.0.0.1:59558 Closing
+[Wed Oct 29 20:18:02 2025] 127.0.0.1:52737 Accepted
+[Wed Oct 29 20:18:05 2025] 127.0.0.1:52737 [500]: POST /livewire/update
+[Wed Oct 29 20:18:05 2025] 127.0.0.1:52737 Closing
+[Wed Oct 29 20:18:09 2025] 127.0.0.1:52172 Accepted
+[Wed Oct 29 20:18:09 2025] 127.0.0.1:52172 [200]: POST /livewire/update
+[Wed Oct 29 20:18:09 2025] 127.0.0.1:52172 Closing
+[Wed Oct 29 20:18:10 2025] 127.0.0.1:61958 Accepted
+[Wed Oct 29 20:18:11 2025] 127.0.0.1:61958 [200]: POST /livewire/update
+[Wed Oct 29 20:18:11 2025] 127.0.0.1:61958 Closing
+[Wed Oct 29 20:18:13 2025] 127.0.0.1:52057 Accepted
+[Wed Oct 29 20:18:13 2025] 127.0.0.1:52057 [200]: POST /livewire/update
+[Wed Oct 29 20:18:13 2025] 127.0.0.1:52057 Closing
+[Wed Oct 29 20:18:13 2025] 127.0.0.1:55561 Accepted
+[Wed Oct 29 20:18:16 2025] 127.0.0.1:55561 [500]: POST /livewire/update
+[Wed Oct 29 20:18:16 2025] 127.0.0.1:55561 Closing
+[Wed Oct 29 20:18:19 2025] 127.0.0.1:55999 Accepted
+[Wed Oct 29 20:18:19 2025] 127.0.0.1:55999 [200]: POST /livewire/update
+[Wed Oct 29 20:18:19 2025] 127.0.0.1:55999 Closing
+[Wed Oct 29 20:18:19 2025] 127.0.0.1:53006 Accepted
+[Wed Oct 29 20:18:25 2025] 127.0.0.1:53006 [200]: POST /livewire/update
+[Wed Oct 29 20:18:25 2025] 127.0.0.1:53006 Closing
+[Wed Oct 29 20:18:26 2025] 127.0.0.1:64152 Accepted
+[Wed Oct 29 20:18:27 2025] 127.0.0.1:64152 [200]: POST /livewire/update
+[Wed Oct 29 20:18:27 2025] 127.0.0.1:64152 Closing
+[Wed Oct 29 20:18:27 2025] 127.0.0.1:56551 Accepted
+[Wed Oct 29 20:18:49 2025] 127.0.0.1:56551 [200]: POST /livewire/update
+[Wed Oct 29 20:18:49 2025] 127.0.0.1:56551 Closing
+[Wed Oct 29 20:18:49 2025] 127.0.0.1:65015 Accepted
+[Wed Oct 29 20:18:49 2025] 127.0.0.1:65015 [200]: POST /livewire/update
+[Wed Oct 29 20:18:49 2025] 127.0.0.1:65015 Closing
+[Wed Oct 29 20:18:50 2025] 127.0.0.1:53593 Accepted
+[Wed Oct 29 20:18:50 2025] 127.0.0.1:53593 [500]: POST /livewire/update
+[Wed Oct 29 20:18:50 2025] 127.0.0.1:53593 Closing
+[Wed Oct 29 20:20:23 2025] 127.0.0.1:63816 Accepted
+[Wed Oct 29 20:20:23 2025] 127.0.0.1:63816 [200]: POST /livewire/update
+[Wed Oct 29 20:20:23 2025] 127.0.0.1:63816 Closing
+[Wed Oct 29 20:20:23 2025] 127.0.0.1:60594 Accepted
+[Wed Oct 29 20:20:26 2025] 127.0.0.1:60594 [200]: POST /livewire/update
+[Wed Oct 29 20:20:26 2025] 127.0.0.1:60594 Closing
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:50528 Accepted
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:50528 [200]: GET /admin
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:50528 Closing
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:59020 Accepted
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:59020 [404]: GET /.well-known/appspecific/com.chrome.devtools.json
+[Wed Oct 29 20:20:45 2025] 127.0.0.1:59020 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:64868 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:64868 [200]: GET /filament/css/filament/forms/forms.css?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:64868 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49314 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:62334 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61005 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:63996 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49314 [200]: GET /filament/css/filament/support/support.css?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:62334 [200]: GET /filament/css/app/custom-stylesheet.css?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61005 [200]: GET /filament/css/filament/filament/app.css?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:63996 [200]: GET /filament/custom.css?v=1761213167
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49314 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:62334 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61005 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:63996 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61646 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61646 [200]: GET /filament/js/filament/notifications/notifications.js?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:61646 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:55809 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:55809 [200]: GET /filament/js/filament/support/support.js?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:55809 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49813 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:57599 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:59632 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49813 [200]: GET /filament/js/filament/filament/echo.js?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:57599 [200]: GET /filament/js/filament/filament/app.js?v=3.3.31.0
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:59632 [200]: GET /livewire/livewire.js?id=951e6947
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:59632 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:49813 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:57599 Closing
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:60214 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:64203 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:65317 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:54272 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:56025 Accepted
+[Wed Oct 29 20:20:46 2025] 127.0.0.1:54000 Accepted
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:60214 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:60214 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:64203 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:64203 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:65317 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:65317 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:54272 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:54272 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:56025 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:56025 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:54000 [200]: POST /livewire/update
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:54000 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:55574 Accepted
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:55574 [200]: GET /filament/js/filament/tables/components/table.js?v=3.3.31.0
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:55574 Closing
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:58623 Accepted
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:58623 [200]: GET /filament/js/filament/widgets/components/stats-overview/stat/chart.js?v=3.3.31.0
+[Wed Oct 29 20:20:47 2025] 127.0.0.1:58623 Closing
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:57956 Accepted
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:57956 [200]: POST /livewire/update
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:57956 Closing
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:59883 Accepted
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:59883 [200]: POST /livewire/update
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:59883 Closing
+[Wed Oct 29 20:20:50 2025] 127.0.0.1:51217 Accepted
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:51217 [200]: POST /livewire/update
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:51217 Closing
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:61630 Accepted
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:61630 [200]: POST /livewire/update
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:61630 Closing
+[Wed Oct 29 20:20:52 2025] 127.0.0.1:55021 Accepted
+[Wed Oct 29 20:20:53 2025] 127.0.0.1:55021 [200]: POST /livewire/update
+[Wed Oct 29 20:20:53 2025] 127.0.0.1:55021 Closing
+[Wed Oct 29 20:20:53 2025] 127.0.0.1:50223 Accepted
+^C^C

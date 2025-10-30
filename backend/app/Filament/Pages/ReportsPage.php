@@ -132,7 +132,8 @@ class ReportsPage extends Page
     public function exportDaily(ReportService $service)
     {
         $date = data_get($this->daily, 'date');
-        $data = $service->getDailyTransactionData($date);
+        // 使用 generateDailySettlement 方法获取渠道汇总数据
+        $data = $service->generateDailySettlement($date);
         $filename = '日报表_' . $date . '.xlsx';
         
         return Excel::download(new DailySettlementExport($data), $filename);
@@ -272,16 +273,19 @@ class ReportsPage extends Page
         
         $rows = [];
         foreach ($data['daily_data'] as $row) {
-            $rows[] = [
-                $row['date'],
-                $row['previous_capital'],
-                $row['profit'],
-                $row['expenses'],
-                $row['new_capital'],
-                $row['rmb_balance'],
-                $row['hkd_balance'],
-                $row['notes'] ?? '',
-            ];
+            // 只导出已结算的数据
+            if ($row['has_settlement']) {
+                $rows[] = [
+                    $row['date'],                    // 日期
+                    $row['previous_capital'],        // 本金
+                    $row['profit'],                  // 利润
+                    $row['expenses'],                // 支出
+                    $row['new_capital'],             // 结余本金
+                    $row['rmb_balance'],             // 人民币结余
+                    $row['hkd_balance'],             // 港币结余
+                    $row['notes'] ?? '',             // 备注
+                ];
+            }
         }
         
         return Excel::download(new MonthlySettlementExport($rows), $filename);
