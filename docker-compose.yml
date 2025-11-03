@@ -11,9 +11,6 @@ services:
     container_name: currency-backend
     restart: unless-stopped
     working_dir: /var/www/html
-    volumes:
-      - ./backend:/var/www/html
-      - backend-storage:/var/www/html/storage
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
@@ -21,24 +18,16 @@ services:
       - QUEUE_CONNECTION=database
     networks:
       - currency-network
-    depends_on:
-      - nginx
 
   # ============================================
   # Nginx Web 服务器
   # ============================================
   nginx:
-    image: nginx:alpine
+    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:nginx-latest
     container_name: currency-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./backend:/var/www/html/backend
-      - ./frontend/dist:/var/www/html/frontend
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d
-      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - "8080:80"
     networks:
       - currency-network
     depends_on:
@@ -54,9 +43,6 @@ services:
     container_name: currency-queue
     restart: unless-stopped
     working_dir: /var/www/html
-    volumes:
-      - ./backend:/var/www/html
-      - backend-storage:/var/www/html/storage
     environment:
       - APP_ENV=production
       - DB_CONNECTION=sqlite
@@ -76,9 +62,6 @@ services:
     container_name: currency-scheduler
     restart: unless-stopped
     working_dir: /var/www/html
-    volumes:
-      - ./backend:/var/www/html
-      - backend-storage:/var/www/html/storage
     environment:
       - APP_ENV=production
       - DB_CONNECTION=sqlite

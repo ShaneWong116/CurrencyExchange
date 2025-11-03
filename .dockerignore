@@ -30,7 +30,7 @@ npm-debug.log
 
 # 前端构建产物
 /frontend/node_modules
-/frontend/dist
+# /frontend/dist  # Nginx 镜像需要这个目录
 
 # 系统文件
 .DS_Store

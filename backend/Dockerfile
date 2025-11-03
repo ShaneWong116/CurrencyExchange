@@ -1,4 +1,4 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # 设置工作目录
 WORKDIR /var/www/html
@@ -16,7 +16,8 @@ RUN apk add --no-cache \
     sqlite-dev \
     zip \
     unzip \
-    bash
+    bash \
+    icu-dev
 
 # 安装 PHP 扩展
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -35,11 +36,14 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # 安装 Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 复制应用代码
+# 复制应用代码（排除 vendor）
+COPY composer.json composer.lock /var/www/html/
 COPY . /var/www/html
 
-# 安装 PHP 依赖
-RUN composer install --optimize-autoloader --no-dev --no-interaction
+# 清理并安装 PHP 依赖
+RUN rm -rf vendor \
+    && composer install --optimize-autoloader --no-dev --no-interaction --no-scripts \
+    && composer dump-autoload --optimize
 
 # 设置权限
 RUN chown -R www-data:www-data /var/www/html \

@@ -1,0 +1,4 @@
+FROM alpine:latest
+RUN echo "Test image for Coding Artifact Registry" > /test.txt
+CMD ["cat", "/test.txt"]
+
