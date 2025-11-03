@@ -100,14 +100,14 @@ echo.
 echo # 安装 wget 用于健康检查
 echo RUN apk add --no-cache wget
 echo.
-echo # 复制前端构建产物
-echo COPY frontend/dist /var/www/html/frontend
+echo # 复制前端构建产物到 Nginx 默认路径
+echo COPY frontend/dist /usr/share/nginx/html
 echo.
 echo # 复制 Nginx 配置
 echo COPY docker/nginx/conf.d /etc/nginx/conf.d
 echo.
 echo # 设置权限
-echo RUN chmod -R 755 /var/www/html
+echo RUN chmod -R 755 /usr/share/nginx/html
 echo.
 echo # 健康检查
 echo HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

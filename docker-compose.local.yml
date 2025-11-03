@@ -5,7 +5,7 @@ services:
   # 后端 API 服务 (Laravel + PHP-FPM)
   # ============================================
   backend:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-backend
     restart: unless-stopped
     working_dir: /var/www/html
@@ -21,7 +21,7 @@ services:
   # Nginx Web 服务器
   # ============================================
   nginx:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:nginx-latest
+    image: currency-nginx:local
     container_name: currency-nginx
     restart: unless-stopped
     ports:
@@ -35,7 +35,7 @@ services:
   # 队列工作进程 (Laravel Queue Worker)
   # ============================================
   queue:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-queue
     restart: unless-stopped
     working_dir: /var/www/html
@@ -52,7 +52,7 @@ services:
   # 定时任务调度器 (Laravel Scheduler)
   # ============================================
   scheduler:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-scheduler
     restart: unless-stopped
     working_dir: /var/www/html
@@ -75,11 +75,4 @@ services:
 networks:
   currency-network:
     driver: bridge
-
-# ============================================
-# 数据卷（持久化存储）
-# ============================================
-volumes:
-  backend-storage:
-    driver: local
 
