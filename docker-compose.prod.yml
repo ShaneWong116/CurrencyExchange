@@ -1,0 +1,219 @@
+# ============================================
+# Exchange System - 生产环境 Docker Compose 配置
+# 使用 Coding 制品库的镜像
+# ============================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 后端 API 服务 (Laravel + PHP-FPM)
+  # ============================================
+  backend:
+    # 从 Coding 制品库拉取镜像
+    # 替换为你的实际镜像地址
+    image: coding-public.coding.net/your-team/exchange-system/exchange-system-docker/exchange-system-backend:latest
+    container_name: exchange-backend-prod
+    restart: unless-stopped
+    working_dir: /var/www/html
+    
+    # 环境变量配置
+    environment:
+      - APP_NAME=ExchangeSystem
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}  # 在 .env 文件中配置
+      - APP_URL=https://your-domain.com
+      
+      # 数据库配置
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/database.sqlite
+      
+      # 队列配置
+      - QUEUE_CONNECTION=database
+      
+      # 缓存配置
+      - CACHE_DRIVER=file
+      - SESSION_DRIVER=file
+      
+      # 日志配置
+      - LOG_CHANNEL=daily
+      - LOG_LEVEL=error
+    
+    # 数据持久化
+    volumes:
+      # SQLite 数据库文件
+      - ./data/database:/var/www/html/database:rw
+      # 存储文件（上传、导出等）
+      - backend-storage:/var/www/html/storage:rw
+      # 日志文件
+      - ./logs/backend:/var/www/html/storage/logs:rw
+    
+    networks:
+      - exchange-network
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Nginx Web 服务器
+  # ============================================
+  nginx:
+    # 从 Coding 制品库拉取镜像
+    image: coding-public.coding.net/your-team/exchange-system/exchange-system-docker/exchange-system-nginx:latest
+    container_name: exchange-nginx-prod
+    restart: unless-stopped
+    
+    # 端口映射
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+    
+    # 数据卷
+    volumes:
+      # SSL 证书（如果有）
+      - ./ssl:/etc/nginx/ssl:ro
+      # 自定义 Nginx 配置（可选）
+      # - ./nginx/custom.conf:/etc/nginx/conf.d/custom.conf:ro
+    
+    networks:
+      - exchange-network
+    
+    depends_on:
+      - backend
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # 队列工作进程 (Laravel Queue Worker)
+  # ============================================
+  queue:
+    image: coding-public.coding.net/your-team/exchange-system/exchange-system-docker/exchange-system-backend:latest
+    container_name: exchange-queue-prod
+    restart: unless-stopped
+    working_dir: /var/www/html
+    
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=sqlite
+      - QUEUE_CONNECTION=database
+    
+    volumes:
+      - ./data/database:/var/www/html/database:rw
+      - backend-storage:/var/www/html/storage:rw
+      - ./logs/queue:/var/www/html/storage/logs:rw
+    
+    # 队列处理命令
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=300
+    
+    networks:
+      - exchange-network
+    
+    depends_on:
+      - backend
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'queue:work' | grep -v grep || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # 定时任务调度器 (Laravel Scheduler)
+  # ============================================
+  scheduler:
+    image: coding-public.coding.net/your-team/exchange-system/exchange-system-docker/exchange-system-backend:latest
+    container_name: exchange-scheduler-prod
+    restart: unless-stopped
+    working_dir: /var/www/html
+    
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=sqlite
+    
+    volumes:
+      - ./data/database:/var/www/html/database:rw
+      - backend-storage:/var/www/html/storage:rw
+      - ./logs/scheduler:/var/www/html/storage/logs:rw
+    
+    # 每分钟执行一次调度器
+    command: >
+      sh -c "while true; do
+        php artisan schedule:run --verbose --no-interaction
+        sleep 60
+      done"
+    
+    networks:
+      - exchange-network
+    
+    depends_on:
+      - backend
+
+# ============================================
+# 网络配置
+# ============================================
+networks:
+  exchange-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================
+# 数据卷（持久化存储）
+# ============================================
+volumes:
+  backend-storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/storage
+
+# ============================================
+# 使用说明
+# ============================================
+# 
+# 1. 复制环境变量模板
+#    cp .env.example .env.production
+#    
+# 2. 编辑 .env.production，设置必要的环境变量
+#    - APP_KEY（运行 php artisan key:generate 生成）
+#    - APP_URL（你的域名）
+#    
+# 3. 修改镜像地址（上面的 image 配置）
+#    替换 your-team 为你的实际团队名
+#    
+# 4. 创建必要的目录
+#    mkdir -p data/database data/storage logs/backend logs/queue logs/scheduler ssl
+#    
+# 5. 启动服务
+#    docker-compose -f docker-compose.prod.yml up -d
+#    
+# 6. 初始化数据库（首次运行）
+#    docker-compose -f docker-compose.prod.yml exec backend php artisan migrate --force
+#    docker-compose -f docker-compose.prod.yml exec backend php artisan db:seed --force
+#    
+# 7. 查看日志
+#    docker-compose -f docker-compose.prod.yml logs -f
+#    
+# 8. 停止服务
+#    docker-compose -f docker-compose.prod.yml down
+#    
+# ============================================
+

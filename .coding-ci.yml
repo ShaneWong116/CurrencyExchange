@@ -1,0 +1,127 @@
+# ============================================
+# Coding CI/CD 配置文件
+# Exchange System - Docker 镜像构建与发布
+# ============================================
+
+main:
+  push:
+    # ============================================
+    # 任务1: 构建后端镜像
+    # ============================================
+    - name: backend
+      services:
+        - docker  # 声明后，流水线内可以直接使用 docker 命令
+      docker:
+        image: php:8.1-fpm-alpine  # PHP 基础镜像用于构建
+      stages:
+        # 设置 Docker 镜像标签
+        - name: set docker tag
+          script: echo -n "zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/backend:$CODING_COMMIT_SHORT"
+          exports:
+            info: IMAGE_TAG
+
+        # 构建 Docker 镜像
+        - name: docker build backend
+          script:
+            - cd backend
+            - echo "🏗️ 构建后端镜像..."
+            - docker build --no-cache -t $IMAGE_TAG -t zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/backend:latest .
+            - echo "✅ 后端镜像构建完成"
+
+        # Docker 登录
+        - name: docker login
+          script: docker login -u currencyexchange-1762153618987 -p f2ed7fac940b86ac8b194be3a71798c81f628c08 zhlibai-docker.pkg.coding.net
+
+        # 推送镜像
+        - name: push backend image
+          script:
+            - echo "📤 推送后端镜像..."
+            - docker push $IMAGE_TAG && docker push zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/backend:latest
+            - echo "✅ 后端镜像推送完成"
+            - echo "镜像地址:"
+            - echo "  - $IMAGE_TAG"
+            - echo "  - zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/backend:latest"
+
+    # ============================================
+    # 任务2: 构建前端并打包 Nginx 镜像
+    # ============================================
+    - name: nginx
+      services:
+        - docker  # 声明后，流水线内可以直接使用 docker 命令
+      docker:
+        image: node:18-alpine  # Node.js 基础镜像用于构建前端
+      stages:
+        # 构建前端应用
+        - name: build frontend
+          script:
+            - echo "📱 构建前端应用..."
+            - cd frontend
+            - npm install
+            - npm run build
+            - echo "✅ 前端构建完成"
+            - ls -la dist/
+
+        # 创建 Nginx Dockerfile
+        - name: create nginx dockerfile
+          script:
+            - cd ..  # 返回项目根目录
+            - echo "📝 创建 Nginx Dockerfile..."
+            - |
+              cat > Dockerfile.nginx <<EOF
+              FROM nginx:alpine
+              
+              # 安装 wget 用于健康检查
+              RUN apk add --no-cache wget
+              
+              # 复制前端构建产物
+              COPY frontend/dist /var/www/html/frontend
+              
+              # 复制 Nginx 配置
+              COPY docker/nginx/conf.d /etc/nginx/conf.d
+              
+              # 设置权限
+              RUN chmod -R 755 /var/www/html
+              
+              # 健康检查
+              HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+                CMD wget --no-verbose --tries=1 --spider http://localhost || exit 1
+              
+              EXPOSE 80 443
+              
+              CMD ["nginx", "-g", "daemon off;"]
+              EOF
+            - echo "✅ Dockerfile 创建完成"
+
+        # 设置 Docker 镜像标签
+        - name: set docker tag
+          script: echo -n "zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/nginx:$CODING_COMMIT_SHORT"
+          exports:
+            info: IMAGE_TAG
+
+        # 构建 Nginx Docker 镜像
+        - name: docker build nginx
+          script:
+            - echo "🏗️ 构建 Nginx 镜像..."
+            - pwd  # 显示当前目录
+            - echo "检查前端构建产物..."
+            - ls -la frontend/dist/ || (echo "❌ 前端构建产物不存在" && exit 1)
+            - echo "检查 Nginx 配置文件..."
+            - ls -la docker/nginx/conf.d/ || (echo "❌ Nginx 配置文件不存在" && exit 1)
+            - echo "检查 Dockerfile.nginx..."
+            - ls -la Dockerfile.nginx || (echo "❌ Dockerfile.nginx 不存在" && exit 1)
+            - docker build --no-cache -f Dockerfile.nginx -t $IMAGE_TAG -t zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/nginx:latest .
+            - echo "✅ Nginx 镜像构建完成"
+
+        # Docker 登录
+        - name: docker login
+          script: docker login zhlibai-docker.pkg.coding.net -u "$DOCKER_USER" -p "$DOCKER_PWD"
+
+        # 推送镜像
+        - name: push nginx image
+          script:
+            - echo "📤 推送 Nginx 镜像..."
+            - docker push $IMAGE_TAG && docker push zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/nginx:latest
+            - echo "✅ Nginx 镜像推送完成"
+            - echo "镜像地址:"
+            - echo "  - $IMAGE_TAG"
+            - echo "  - zhlibai-docker.pkg.coding.net/currencyexchange/exchange-system/nginx:latest"
