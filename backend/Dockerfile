@@ -40,19 +40,20 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock /var/www/html/
 COPY . /var/www/html
 
+# 创建数据库目录和文件（必须在 composer 之前）
+RUN mkdir -p /var/www/html/database \
+    && touch /var/www/html/database/database.sqlite
+
 # 清理并安装 PHP 依赖
 RUN rm -rf vendor \
-    && composer install --optimize-autoloader --no-dev --no-interaction --no-scripts \
+    && composer install --optimize-autoloader --no-dev --no-interaction \
     && composer dump-autoload --optimize
 
 # 设置权限
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
-    && chmod -R 775 /var/www/html/bootstrap/cache
-
-# 确保 SQLite 数据库文件存在
-RUN touch /var/www/html/database/database.sqlite \
-    && chown www-data:www-data /var/www/html/database/database.sqlite \
+    && chmod -R 775 /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/database \
     && chmod 664 /var/www/html/database/database.sqlite
 
 # 切换到 www-data 用户

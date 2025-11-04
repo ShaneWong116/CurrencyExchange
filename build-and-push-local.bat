@@ -44,7 +44,7 @@ echo.
 
 REM 登录 Docker 仓库
 echo [步骤 2] 登录阿里云 Docker 仓库...
-docker login --username=%DOCKER_USER% --password=%DOCKER_PWD% %DOCKER_REGISTRY%
+@REM docker login --username=%DOCKER_USER% --password=9T.!DJe9aVxi5-u %DOCKER_REGISTRY%
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] Docker 登录失败
     pause
@@ -55,12 +55,12 @@ echo.
 
 REM 构建后端镜像
 echo [步骤 3] 构建后端镜像...
-echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:%VERSION%
-echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:latest
+echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-%VERSION%
+echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-latest
 echo.
 
 cd backend
-docker build --no-cache -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:%VERSION% -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:latest .
+docker build --no-cache -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-%VERSION% -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-latest .
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 后端镜像构建失败
     cd ..
@@ -123,11 +123,11 @@ echo.
 
 REM 构建 Nginx 镜像
 echo [步骤 6] 构建 Nginx 镜像...
-echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:%VERSION%
-echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:latest
+echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-%VERSION%
+echo   镜像名称: %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-latest
 echo.
 
-docker build --no-cache -f Dockerfile.nginx -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:%VERSION% -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:latest .
+docker build --no-cache -f Dockerfile.nginx -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-%VERSION% -t %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-latest .
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] Nginx 镜像构建失败
     pause
@@ -138,13 +138,13 @@ echo.
 
 REM 推送后端镜像
 echo [步骤 7] 推送后端镜像...
-docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:%VERSION%
+docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-%VERSION%
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 推送后端镜像失败
     pause
     exit /b 1
 )
-docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:latest
+docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-latest
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 推送后端镜像 latest 标签失败
     pause
@@ -155,13 +155,13 @@ echo.
 
 REM 推送 Nginx 镜像
 echo [步骤 8] 推送 Nginx 镜像...
-docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:%VERSION%
+docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-%VERSION%
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 推送 Nginx 镜像失败
     pause
     exit /b 1
 )
-docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:latest
+docker push %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-latest
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 推送 Nginx 镜像 latest 标签失败
     pause
@@ -183,12 +183,12 @@ echo ============================================
 echo.
 echo [镜像地址]
 echo   后端镜像:
-echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:%VERSION%
-echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/backend:latest
+echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-%VERSION%
+echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:backend-latest
 echo.
 echo   Nginx 镜像:
-echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:%VERSION%
-echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%/nginx:latest
+echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-%VERSION%
+echo     - %DOCKER_REGISTRY%/%DOCKER_NAMESPACE%/%PROJECT_NAME%:nginx-latest
 echo.
 
 REM 显示本地镜像
