@@ -171,7 +171,7 @@ class SettlementService
 
         // 计算其他支出为0时的预期结果
         $expectedNewCapital = $currentCapital + $totalProfit;
-        $expectedNewHkdBalance = $currentHkdBalance + $totalProfit;
+        $expectedNewHkdBalance = $currentHkdBalance + $unsettledIncomeHkd - $outcomeHkdTotal + $outgoingProfit;
 
         return [
             // 当前状态（用于核对）
@@ -268,8 +268,10 @@ class SettlementService
             
             // 8. 计算结余后的数据
             $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal;
-            $newHkdBalance = $preview['current_hkd_balance'] + $preview['profit'];
-            // $newHkdBalance = $preview['current_hkd_balance'] + $preview['outgoing_profit'] - $otherExpensesTotal;
+            $newHkdBalance = $preview['current_hkd_balance'] 
+                           + $preview['unsettled_income_hkd'] 
+                           - $preview['unsettled_outcome_hkd'] 
+                           + $preview['outgoing_profit'];
             
             // 9. 获取下一个序号
             $sequenceNumber = Settlement::getNextSequenceNumber();
@@ -334,9 +336,11 @@ class SettlementService
                 afterAmount: $newHkdBalance,
                 adjustmentType: 'settlement',
                 reason: sprintf(
-                    '结算调整 - 结算号: %s, 利润: HK$ %s',
+                    '结算调整 - 结算号: %s, 入账: +HK$ %s, 出账: -HK$ %s, 出账利润: +HK$ %s',
                     $sequenceNumber,
-                    number_format($preview['profit'], 2)
+                    number_format($preview['unsettled_income_hkd'], 2),
+                    number_format($preview['unsettled_outcome_hkd'], 2),
+                    number_format($preview['outgoing_profit'], 2)
                 ),
                 settlementId: $settlement->id,
                 userId: $userId
