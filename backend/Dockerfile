@@ -1,4 +1,4 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # 设置工作目录
 WORKDIR /var/www/html
@@ -16,7 +16,8 @@ RUN apk add --no-cache \
     sqlite-dev \
     zip \
     unzip \
-    bash
+    bash \
+    icu-dev
 
 # 安装 PHP 扩展
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -35,25 +36,25 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # 安装 Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 复制应用代码
+# 复制应用代码（排除 vendor）
+COPY composer.json composer.lock /var/www/html/
 COPY . /var/www/html
 
-# 安装 PHP 依赖
-RUN composer install --optimize-autoloader --no-dev --no-interaction
+# 创建数据库目录和文件（必须在 composer 之前）
+RUN mkdir -p /var/www/html/database \
+    && touch /var/www/html/database/database.sqlite
+
+# 清理并安装 PHP 依赖
+RUN rm -rf vendor \
+    && composer install --optimize-autoloader --no-dev --no-interaction \
+    && composer dump-autoload --optimize
 
 # 设置权限
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
-    && chmod -R 775 /var/www/html/bootstrap/cache
-
-# 创建数据库目录(但不创建数据库文件,数据库文件由volume提供)
-RUN mkdir -p /var/www/html/database \
-    && chown www-data:www-data /var/www/html/database \
-    && chmod 775 /var/www/html/database
-
-# 复制启动脚本
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+    && chmod -R 775 /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/database \
+    && chmod 664 /var/www/html/database/database.sqlite
 
 # 切换到 www-data 用户
 USER www-data
@@ -61,7 +62,6 @@ USER www-data
 # 暴露端口
 EXPOSE 9000
 
-# 使用启动脚本(会在容器启动时检查并初始化数据库)
-ENTRYPOINT ["docker-entrypoint.sh"]
+# 启动 PHP-FPM
 CMD ["php-fpm"]
 

@@ -15,7 +15,33 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      workbox: {
+        // 排除后端路径，不让 Service Worker 缓存
+        navigateFallbackDenylist: [
+          /^\/admin/,      // 管理后台
+          /^\/api/,        // API 接口
+          /^\/livewire/,   // Livewire
+          /^\/filament/    // Filament 资源
+        ],
+        // 运行时缓存策略 - 只缓存前端资源
+        runtimeCaching: [
+          {
+            urlPattern: /^(?!.*\/(admin|api|livewire|filament)).*$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 24 * 60 * 60 // 24 小时
+              }
+            }
+          }
+        ]
+      },
       manifest: {
         name: '财务管理系统',
         short_name: '财务管理',
@@ -36,22 +62,6 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\./,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24小时
-              }
-            }
           }
         ]
       }

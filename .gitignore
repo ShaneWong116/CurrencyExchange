@@ -1,53 +1,55 @@
-
-# ============================================
-# 通用忽略文件
-# ============================================
+# 依赖文件
 node_modules/
+/backend/vendor/
+/frontend/node_modules/
+**/node_modules/
+**/vendor/
+
+# 编译产物
 dist/
 build/
-*.log
-.DS_Store
+/frontend/dist/
+*.min.js
+*.min.css
+
+# 环境配置
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
+/backend/.env
+/frontend/.env
 
-# ============================================
-# 数据库文件(重要: 不提交任何数据库文件)
-# ============================================
-*.sqlite
-*.sqlite-*
-*.sqlite3
-*.db
-data/dev/*
-data/prod/*
-data/backups/*
-data/storage/*
-!data/**/.gitkeep
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# ============================================
-# 日志文件
-# ============================================
-logs/
+# 日志
 *.log
-storage/logs/
-# the composer package lock file and install directory
-# Commit your application's lock file http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file
-# You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file
-# /composer.lock
-/fuel/vendor
-
-# the fuelphp document
-/docs/
-
-# you may install these packages with `oil package`.
-# http://fuelphp.com/docs/packages/oil/package.html
-# /fuel/packages/auth/
-# /fuel/packages/email/
-# /fuel/packages/oil/
-# /fuel/packages/orm/
-# /fuel/packages/parser/
-
-# dynamically generated files
+/backend/storage/logs/*
 /fuel/app/logs/*/*/*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Laravel 缓存
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
 /fuel/app/cache/*/*
+
+# Composer
+composer.phar
+/fuel/vendor/
+
+# 临时文件
+*.tmp
+*.temp
+Thumbs.db
+
+# 其他
+/docs/
 /fuel/app/config/crypt.php

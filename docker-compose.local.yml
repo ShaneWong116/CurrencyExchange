@@ -5,35 +5,15 @@ services:
   # 后端 API 服务 (Laravel + PHP-FPM)
   # ============================================
   backend:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-backend
     restart: unless-stopped
     working_dir: /var/www/html
     environment:
-      - APP_NAME=财务管理系统
       - APP_ENV=production
       - APP_DEBUG=false
-      - APP_KEY=base64:aF/V8DGlvZM4SmU037nzQ+hi2JJPacLptdmQhq/Tnss=
-      - APP_URL=http://aurexmo.com
-      - ASSET_URL=http://aurexmo.com
-      - FORCE_HTTPS=false
       - DB_CONNECTION=sqlite
-      - DB_DATABASE=/var/www/html/database/database.sqlite
       - QUEUE_CONNECTION=database
-      - SESSION_DRIVER=file
-      - SESSION_LIFETIME=120
-      - SESSION_SECURE_COOKIE=false
-      - SESSION_SAME_SITE=lax
-      - CACHE_DRIVER=file
-      - LOG_CHANNEL=stack
-      - SANCTUM_STATEFUL_DOMAINS=aurexmo.com,www.aurexmo.com
-    volumes:
-      # SQLite数据库持久化（挂载整个database目录）
-      - backend-database:/var/www/html/database
-      # 上传文件和日志持久化
-      - backend-storage:/var/www/html/storage
-      # 共享 public 目录给 Nginx（用于 Filament 静态资源）
-      - backend-public:/var/www/html/public
     networks:
       - currency-network
 
@@ -41,14 +21,11 @@ services:
   # Nginx Web 服务器
   # ============================================
   nginx:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:nginx-latest
+    image: currency-nginx:local
     container_name: currency-nginx
     restart: unless-stopped
     ports:
       - "8080:80"
-    volumes:
-      # 挂载 backend 的 public 目录（用于直接提供 Filament 静态资源）
-      - backend-public:/var/www/html/public:ro
     networks:
       - currency-network
     depends_on:
@@ -58,7 +35,7 @@ services:
   # 队列工作进程 (Laravel Queue Worker)
   # ============================================
   queue:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-queue
     restart: unless-stopped
     working_dir: /var/www/html
@@ -75,7 +52,7 @@ services:
   # 定时任务调度器 (Laravel Scheduler)
   # ============================================
   scheduler:
-    image: crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com/currencyexchange/currency_exchange:backend-latest
+    image: currency-backend:local
     container_name: currency-scheduler
     restart: unless-stopped
     working_dir: /var/www/html
@@ -98,15 +75,4 @@ services:
 networks:
   currency-network:
     driver: bridge
-
-# ============================================
-# 数据卷（持久化存储）
-# ============================================
-volumes:
-  backend-database:
-    driver: local
-  backend-storage:
-    driver: local
-  backend-public:
-    driver: local
 
