@@ -129,6 +129,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDraftStore } from '@/stores/draft'
 import { Dialog, Notify } from 'quasar'
+import { formatDateTime } from '@/utils/dateFormat'
 
 const router = useRouter()
 const draftStore = useDraftStore()
@@ -171,9 +172,7 @@ const getTypeLabel = (type) => {
 
 // 格式化时间
 const formatTime = (timeString) => {
-  if (!timeString) return ''
-  const date = new Date(timeString)
-  return date.toLocaleString('zh-CN')
+  return formatDateTime(timeString, true)
 }
 
 // 检查是否可以提交

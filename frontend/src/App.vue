@@ -5,14 +5,42 @@
         <router-view />
       </q-page-container>
     </q-layout>
+    
+    <!-- 全局刷新Token Loading -->
+    <q-dialog v-model="showRefreshingDialog" persistent>
+      <q-card style="min-width: 300px">
+        <q-card-section class="row items-center">
+          <q-spinner color="primary" size="40px" class="q-mr-md" />
+          <span class="q-ml-sm">正在刷新登录状态...</span>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
 export default defineComponent({
-  name: 'App'
+  name: 'App',
+  
+  setup() {
+    const authStore = useAuthStore()
+    const { authState } = storeToRefs(authStore)
+    const showRefreshingDialog = ref(false)
+    
+    // 监听认证状态，显示/隐藏刷新loading
+    watch(authState, (newState) => {
+      console.log('[App] authState changed:', newState)
+      showRefreshingDialog.value = newState === 'refreshing'
+    })
+    
+    return {
+      showRefreshingDialog
+    }
+  }
 })
 </script>
 

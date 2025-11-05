@@ -42,12 +42,14 @@ services:
     
     # 数据持久化
     volumes:
-      # SQLite 数据库文件
-      - ./data/database:/var/www/html/database:rw
+      # 生产环境数据库(与开发环境完全隔离)
+      - ./data/prod:/var/www/html/database:rw
       # 存储文件（上传、导出等）
       - backend-storage:/var/www/html/storage:rw
       # 日志文件
       - ./logs/backend:/var/www/html/storage/logs:rw
+      # 数据库备份目录
+      - ./data/backups:/var/backups:rw
     
     networks:
       - exchange-network
@@ -111,7 +113,8 @@ services:
       - QUEUE_CONNECTION=database
     
     volumes:
-      - ./data/database:/var/www/html/database:rw
+      # 生产环境数据库(与backend服务共享)
+      - ./data/prod:/var/www/html/database:rw
       - backend-storage:/var/www/html/storage:rw
       - ./logs/queue:/var/www/html/storage/logs:rw
     
@@ -147,7 +150,8 @@ services:
       - DB_CONNECTION=sqlite
     
     volumes:
-      - ./data/database:/var/www/html/database:rw
+      # 生产环境数据库(与backend服务共享)
+      - ./data/prod:/var/www/html/database:rw
       - backend-storage:/var/www/html/storage:rw
       - ./logs/scheduler:/var/www/html/storage/logs:rw
     

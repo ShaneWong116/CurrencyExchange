@@ -1,9 +1,35 @@
 
+# ============================================
+# 通用忽略文件
+# ============================================
 node_modules/
 dist/
 build/
 *.log
 .DS_Store
+.env
+.env.*
+!.env.example
+
+# ============================================
+# 数据库文件(重要: 不提交任何数据库文件)
+# ============================================
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.db
+data/dev/*
+data/prod/*
+data/backups/*
+data/storage/*
+!data/**/.gitkeep
+
+# ============================================
+# 日志文件
+# ============================================
+logs/
+*.log
+storage/logs/
 # the composer package lock file and install directory
 # Commit your application's lock file http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file
 # You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file

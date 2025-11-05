@@ -49,4 +49,73 @@ myApp.use(Quasar, {
 myApp.use(pinia)
 myApp.use(router)
 
+// 全局错误处理器
+myApp.config.errorHandler = (err, instance, info) => {
+  console.error('[Global Error Handler]', err, info)
+  
+  // 对于关键错误显示通知
+  if (err.message && !err.message.includes('Navigation')) {
+    Notify.create({
+      type: 'negative',
+      message: '应用发生错误，请刷新页面重试',
+      position: 'top',
+      timeout: 5000,
+      actions: [
+        {
+          label: '刷新',
+          color: 'white',
+          handler: () => {
+            window.location.reload()
+          }
+        }
+      ]
+    })
+  }
+}
+
+// 监听未捕获的Promise rejection
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Unhandled Promise Rejection]', event.reason)
+  
+  // 如果是网络错误或认证错误，不重复提示（已在拦截器中处理）
+  if (event.reason?.message?.includes('401') || 
+      event.reason?.message?.includes('Token') ||
+      event.reason?.message?.includes('refresh')) {
+    return
+  }
+  
+  // 其他未处理的错误显示提示
+  Notify.create({
+    type: 'negative',
+    message: '操作失败，请重试',
+    position: 'top'
+  })
+})
+
+// 监听网络状态变化
+window.addEventListener('online', () => {
+  console.log('[Network] 网络已连接')
+  Notify.create({
+    type: 'positive',
+    message: '网络已恢复连接',
+    position: 'top'
+  })
+})
+
+window.addEventListener('offline', () => {
+  console.log('[Network] 网络已断开')
+  Notify.create({
+    type: 'warning',
+    message: '网络连接已断开，请检查网络设置',
+    position: 'top',
+    timeout: 0,
+    actions: [
+      {
+        label: '知道了',
+        color: 'white'
+      }
+    ]
+  })
+})
+
 myApp.mount('#app')

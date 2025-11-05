@@ -209,6 +209,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTransactionStore } from '@/stores/transaction'
 import { Dialog } from 'quasar'
+import { formatDateTime } from '@/utils/dateFormat'
 
 const transactionStore = useTransactionStore()
 
@@ -318,8 +319,7 @@ const getStatusLabel = (status) => {
 }
 
 const formatTime = (timeString) => {
-  const date = new Date(timeString)
-  return date.toLocaleString('zh-CN')
+  return formatDateTime(timeString, true)
 }
 
 // 筛选操作

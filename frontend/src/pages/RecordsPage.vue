@@ -345,6 +345,7 @@
 import BottomNavigation from '@/components/BottomNavigation.vue'
 import { api } from '@/utils/api'
 import { useAuthStore } from '@/stores/auth'
+import { formatDateTime, formatShortDateTime } from '@/utils/dateFormat'
 
 export default {
   name: 'RecordsPage',
@@ -441,27 +442,12 @@ export default {
       return n.toFixed(2)
     },
     formatTime(datetime) {
-      if (!datetime) return ''
-      // Format: 2025-09-18 11:16:27 -> 09-18 11:16
-      const match = datetime.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/)
-      if (match) {
-        return `${match[2]}-${match[3]} ${match[4]}:${match[5]}`
-      }
-      return datetime
+      // 使用工具函数进行时区转换
+      return formatShortDateTime(datetime)
     },
     formatFullTime(datetime) {
-      if (!datetime) return ''
-      // Format: 2025-10-23T05:30:18.000000Z -> 2025-10-23 05:30:18
-      // Or: 2025-10-23 05:30:18 -> 2025-10-23 05:30:18
-      const isoMatch = datetime.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
-      if (isoMatch) {
-        return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]} ${isoMatch[4]}:${isoMatch[5]}:${isoMatch[6]}`
-      }
-      const normalMatch = datetime.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-      if (normalMatch) {
-        return datetime.substring(0, 19)
-      }
-      return datetime
+      // 使用工具函数进行时区转换(包含秒)
+      return formatDateTime(datetime, true)
     },
     getTypeColor(type) {
       const colors = {

@@ -8,16 +8,21 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: currency-backend
+    container_name: currency-backend-dev
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
+      # 代码目录(不包含database子目录,避免覆盖数据)
       - ./backend:/var/www/html
+      # 开发环境数据库(独立挂载,与代码分离)
+      - ./data/dev:/var/www/html/database:rw
+      # 存储目录
       - backend-storage:/var/www/html/storage
     environment:
-      - APP_ENV=production
-      - APP_DEBUG=false
+      - APP_ENV=local
+      - APP_DEBUG=true
       - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/database.sqlite
       - QUEUE_CONNECTION=database
     networks:
       - currency-network
@@ -51,15 +56,21 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: currency-queue
+    container_name: currency-queue-dev
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
+      # 代码目录
       - ./backend:/var/www/html
+      # 开发环境数据库(与backend服务共享)
+      - ./data/dev:/var/www/html/database:rw
+      # 存储目录
       - backend-storage:/var/www/html/storage
     environment:
-      - APP_ENV=production
+      - APP_ENV=local
+      - APP_DEBUG=true
       - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/database.sqlite
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     networks:
       - currency-network
@@ -73,15 +84,21 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: currency-scheduler
+    container_name: currency-scheduler-dev
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
+      # 代码目录
       - ./backend:/var/www/html
+      # 开发环境数据库(与backend服务共享)
+      - ./data/dev:/var/www/html/database:rw
+      # 存储目录
       - backend-storage:/var/www/html/storage
     environment:
-      - APP_ENV=production
+      - APP_ENV=local
+      - APP_DEBUG=true
       - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/database.sqlite
     command: >
       sh -c "while true; do
         php artisan schedule:run --verbose --no-interaction &

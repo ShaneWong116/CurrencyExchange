@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, setAuthRouter } from '@/stores/auth'
+import { Notify } from 'quasar'
 
 const routes = [
   {
@@ -94,23 +95,54 @@ const router = createRouter({
   routes
 })
 
+// 将router实例注入到authStore，用于强制跳转
+setAuthRouter(router)
+
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   
+  console.log('[Router] 导航:', from.path, '->', to.path, '| authState:', authStore.authState)
+  
+  // 如果正在刷新token，显示提示并等待
+  if (authStore.isRefreshing && to.meta.requiresAuth) {
+    console.log('[Router] 正在刷新token，等待...')
+    // 可以显示一个loading提示
+    // 这里我们允许导航继续，让拦截器处理
+  }
+  
   // 检查是否需要登录
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-    return
+  if (to.meta.requiresAuth) {
+    if (!authStore.isAuthenticated) {
+      console.log('[Router] 需要认证，重定向到登录页')
+      Notify.create({
+        type: 'warning',
+        message: '请先登录',
+        position: 'top'
+      })
+      next('/login')
+      return
+    }
   }
   
   // 已登录用户访问登录页，重定向到首页
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    console.log('[Router] 已登录用户访问登录页，重定向到首页')
     next('/home')
     return
   }
   
   next()
+})
+
+// 全局导航错误处理
+router.onError((error) => {
+  console.error('[Router] 导航错误:', error)
+  Notify.create({
+    type: 'negative',
+    message: '页面跳转失败，请重试',
+    position: 'top'
+  })
 })
 
 export default router

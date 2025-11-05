@@ -57,6 +57,39 @@ check_docker() {
     print_status "Docker Compose 已安装: $(docker-compose --version)"
 }
 
+# 初始化数据目录
+init_data_dirs() {
+    print_header "初始化数据目录"
+    
+    # 创建必要的目录
+    mkdir -p data/dev data/prod data/backups data/storage
+    mkdir -p logs/backend logs/queue logs/scheduler
+    
+    # 创建 .gitkeep 文件
+    touch data/dev/.gitkeep data/prod/.gitkeep data/backups/.gitkeep data/storage/.gitkeep
+    
+    print_status "数据目录已创建"
+    print_info "  data/dev/      - 开发环境数据"
+    print_info "  data/prod/     - 生产环境数据"
+    print_info "  data/backups/  - 备份文件"
+    print_info "  data/storage/  - 存储文件"
+}
+
+# 备份现有数据库(如果存在)
+backup_existing_db() {
+    local ENV=$1
+    local DB_FILE="data/$ENV/database.sqlite"
+    
+    if [ -f "$DB_FILE" ]; then
+        print_warning "发现现有数据库,正在备份..."
+        local BACKUP_FILE="data/backups/$ENV/database_before_deploy_$(date +%Y%m%d_%H%M%S).sqlite"
+        cp "$DB_FILE" "$BACKUP_FILE"
+        print_status "数据库已备份到: $BACKUP_FILE"
+    else
+        print_info "未发现现有数据库,将创建新数据库"
+    fi
+}
+
 # 构建前端
 build_frontend() {
     print_header "构建前端应用"
@@ -279,6 +312,8 @@ EOF
     
     # 执行部署步骤
     check_docker
+    init_data_dirs              # 新增: 初始化数据目录
+    backup_existing_db "dev"    # 新增: 备份开发环境数据
     create_directories
     build_frontend
     prepare_backend
@@ -286,6 +321,12 @@ EOF
     init_application
     health_check
     show_info
+    
+    # 新增: 数据隔离提示
+    print_header "数据隔离提示"
+    print_status "开发环境数据: data/dev/database.sqlite"
+    print_status "生产环境数据: data/prod/database.sqlite"
+    print_info "详细说明请查看: DOCKER_DATA_ISOLATION_GUIDE.md"
 }
 
 # 运行主函数
