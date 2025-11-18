@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\Transaction;
 use App\Models\Settlement;
 use App\Models\SettlementExpense;
+use App\Models\BalanceAdjustment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -14,11 +15,11 @@ class ReportService
 {
     /**
      * 生成指定日期的日结数据
+     * 注意：直接从 ChannelBalance 表读取实时余额，不再依赖历史计算
      */
     public function generateDailySettlement(string $date): array
     {
         $theDate = Carbon::parse($date)->startOfDay();
-        $yesterday = $theDate->copy()->subDay()->toDateString();
 
         $channels = Channel::active()->get();
 
@@ -27,10 +28,10 @@ class ReportService
         $totalProfit = 0.0;
 
         foreach ($channels as $channel) {
-            $yesterdayBalance = BalanceCarryForward::where('channel_id', $channel->id)
-                ->whereDate('date', $yesterday)
-                ->value('balance_cny') ?? 0.0;
+            // 直接读取渠道当前的实时余额（从 ChannelBalance 表）
+            $currentBalance = $channel->getRmbBalance();
 
+            // 统计今日交易（用于展示明细，不用于计算余额）
             $todayIncomeRmb = (float) Transaction::where('channel_id', $channel->id)
                 ->where('type', 'income')
                 ->whereDate('created_at', $theDate)
@@ -51,7 +52,9 @@ class ReportService
                 ->whereDate('created_at', $theDate)
                 ->sum('hkd_amount');
 
-            $currentBalance = $yesterdayBalance + $todayIncomeRmb - $todayOutcomeRmb;
+            // 昨日余额 = 当前余额 - 今日净变化
+            $yesterdayBalance = $currentBalance - $todayIncomeRmb + $todayOutcomeRmb;
+            
             // 利润（港币）按需求：出账 - 入账
             $profit = $todayOutcomeHkd - $todayIncomeHkd;
 
