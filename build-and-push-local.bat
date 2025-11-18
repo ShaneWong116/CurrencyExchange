@@ -11,6 +11,9 @@ echo   本地构建并推送 Docker 镜像
 echo ============================================
 echo.
 
+REM 切换到脚本所在目录，避免从其他路径运行导致找不到文件
+cd /d %~dp0
+
 REM 配置信息 - 阿里云容器镜像服务
 set DOCKER_REGISTRY=crpi-nsc415g542h2toto.cn-shenzhen.personal.cr.aliyuncs.com
 set DOCKER_NAMESPACE=currencyexchange
