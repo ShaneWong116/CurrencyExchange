@@ -15,7 +15,7 @@ class ImageController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|max:5120', // 5MB
+            'image' => 'required|image|mimes:jpeg,jpg,png|max:5120', // 明确指定MIME类型，5MB
             'transaction_id' => 'nullable|exists:transactions,id',
             'draft_id' => 'nullable|exists:transaction_drafts,id',
         ]);
@@ -38,8 +38,24 @@ class ImageController extends Controller
         $file = $request->file('image');
         
         try {
-            // 压缩图片
+            // 验证是否真的是图片
             $image = ImageProcessor::make($file);
+            
+            // 检查图片有效性
+            if (!$image->width() || !$image->height()) {
+                return response()->json([
+                    'message' => '无效的图片文件',
+                    'error_code' => 'INVALID_IMAGE'
+                ], 400);
+            }
+            
+            // 检查图片尺寸限制（防止超大图片攻击）
+            if ($image->width() > 10000 || $image->height() > 10000) {
+                return response()->json([
+                    'message' => '图片尺寸过大',
+                    'error_code' => 'IMAGE_TOO_LARGE'
+                ], 400);
+            }
             
             // 保持宽高比，最大宽度1200px
             if ($image->width() > 1200) {
@@ -78,10 +94,26 @@ class ImageController extends Controller
                 ]
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (\Intervention\Image\Exception\NotReadableException $e) {
             return response()->json([
-                'message' => '图片上传失败',
+                'message' => '无效的图片文件',
+                'error_code' => 'INVALID_IMAGE'
+            ], 400);
+        } catch (\Exception $e) {
+            // 记录详细错误到日志
+            \Log::error('Image upload failed', [
+                'user_id' => $request->user()->id,
                 'error' => $e->getMessage()
+            ]);
+            
+            // 生产环境不返回详细错误信息
+            $message = app()->environment('production') 
+                ? '图片上传失败，请稍后重试' 
+                : $e->getMessage();
+            
+            return response()->json([
+                'message' => $message,
+                'error_code' => 'IMAGE_UPLOAD_FAILED'
             ], 500);
         }
     }
@@ -139,7 +171,7 @@ class ImageController extends Controller
     public function batchUpload(Request $request)
     {
         $request->validate([
-            'images' => 'required|array|max:10',
+            'images' => 'required|array|max:10|min:1',
             'images.*' => 'required|string', // Base64图片数据
             'transaction_id' => 'nullable|exists:transactions,id',
             'draft_id' => 'nullable|exists:transaction_drafts,id',
@@ -158,6 +190,26 @@ class ImageController extends Controller
             if ($draft->user_id !== $request->user()->id) {
                 return response()->json(['message' => '无权访问'], 403);
             }
+        }
+
+        // 计算总大小（Base64解码后），限制为50MB
+        $totalSize = 0;
+        foreach ($request->images as $base64Image) {
+            $decoded = base64_decode($base64Image, true);
+            if ($decoded === false) {
+                return response()->json([
+                    'message' => '无效的图片数据',
+                    'error_code' => 'INVALID_BASE64'
+                ], 400);
+            }
+            $totalSize += strlen($decoded);
+        }
+        
+        if ($totalSize > 50 * 1024 * 1024) { // 50MB
+            return response()->json([
+                'message' => '批量上传总大小超过限制(50MB)',
+                'error_code' => 'BATCH_SIZE_EXCEEDED'
+            ], 400);
         }
 
         $results = [];

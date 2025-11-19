@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CleanupLog;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
@@ -64,12 +65,33 @@ class CleanupService
             }
 
             if (in_array('bills', $contentTypes)) {
-                $q = DB::table('transactions');
+                // 使用 Eloquent 模型删除，以触发 deleted 事件回滚渠道余额
+                // 注意：只删除未结算的交易记录，已结算的记录会被跳过
+                $q = Transaction::query()
+                    ->where('settlement_status', 'unsettled'); // 仅删除未结算的交易
+                
                 // 以提交时间 `submit_time` 为准进行时间范围过滤
                 if ($range) {
                     $q->whereBetween('submit_time', $range);
                 }
-                $deleted['bills'] = $q->delete();
+                
+                // 分批删除以避免内存问题，同时确保每条记录的deleted事件都被触发
+                $transactions = $q->get();
+                $deletedCount = 0;
+                foreach ($transactions as $transaction) {
+                    try {
+                        $transaction->delete();
+                        $deletedCount++;
+                    } catch (\Exception $e) {
+                        // 如果删除失败（比如已结算的记录），跳过该记录
+                        // 记录日志但不中断清理流程
+                        \Log::warning('交易记录删除失败', [
+                            'transaction_id' => $transaction->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+                $deleted['bills'] = $deletedCount;
             }
 
             if (in_array('channels', $contentTypes)) {

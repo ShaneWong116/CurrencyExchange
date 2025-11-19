@@ -67,6 +67,20 @@ class Transaction extends Model
             }
         });
 
+        // 更新前检查：禁止编辑已结算的交易
+        static::updating(function ($transaction) {
+            if ($transaction->getOriginal('settlement_status') === 'settled') {
+                throw new \Exception('不能编辑已结算的交易记录。如需修改，请先撤销相关的结算记录。');
+            }
+        });
+
+        // 删除前检查：禁止删除已结算的交易
+        static::deleting(function ($transaction) {
+            if ($transaction->isSettled()) {
+                throw new \Exception('不能删除已结算的交易记录。如需删除，请先撤销相关的结算记录。');
+            }
+        });
+
         // 交易删除后更新统计
         static::deleted(function ($transaction) {
             // 更新仪表盘总统计
@@ -81,6 +95,11 @@ class Transaction extends Model
                 ->first();
             if ($channelStats) {
                 $channelStats->removeTransaction($transaction);
+            }
+            
+            // 回滚渠道余额（仅针对未结算的入账/出账交易）
+            if (in_array($transaction->type, ['income', 'outcome'])) {
+                static::revertChannelBalance($transaction);
             }
         });
     }
@@ -204,63 +223,139 @@ class Transaction extends Model
     
     /**
      * 更新指定货币的余额（真正的实时累加）
+     * 使用数据库锁防止并发问题
      */
     protected static function updateCurrencyBalance($channelId, $currency, $today, $transactionType, $amount)
     {
-        // 1. 获取或创建今日余额记录
-        $todayBalance = ChannelBalance::where('channel_id', $channelId)
-            ->where('currency', $currency)
-            ->where('date', $today)
-            ->first();
-        
-        if (!$todayBalance) {
-            // 今天还没有记录，需要从历史继承
-            $previousBalance = ChannelBalance::where('channel_id', $channelId)
+        DB::transaction(function () use ($channelId, $currency, $today, $transactionType, $amount) {
+            // 1. 获取或创建今日余额记录（使用行锁防止并发）
+            $todayBalance = ChannelBalance::where('channel_id', $channelId)
                 ->where('currency', $currency)
-                ->where('date', '<', $today)
-                ->orderBy('date', 'desc')
-                ->orderBy('id', 'desc')
+                ->where('date', $today)
+                ->lockForUpdate() // 🔒 添加行锁
                 ->first();
             
-            $initialAmount = $previousBalance ? $previousBalance->current_balance : 0;
+            if (!$todayBalance) {
+                // 今天还没有记录，需要从历史继承
+                $previousBalance = ChannelBalance::where('channel_id', $channelId)
+                    ->where('currency', $currency)
+                    ->where('date', '<', $today)
+                    ->orderBy('date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->lockForUpdate() // 🔒 读取历史余额时也加锁
+                    ->first();
+                
+                $initialAmount = $previousBalance ? $previousBalance->current_balance : 0;
+                
+                // 创建今日记录
+                $todayBalance = ChannelBalance::create([
+                    'channel_id' => $channelId,
+                    'currency' => $currency,
+                    'date' => $today,
+                    'initial_amount' => $initialAmount,
+                    'income_amount' => 0,
+                    'outcome_amount' => 0,
+                    'current_balance' => $initialAmount,
+                ]);
+            }
             
-            // 创建今日记录
-            $todayBalance = ChannelBalance::create([
-                'channel_id' => $channelId,
-                'currency' => $currency,
-                'date' => $today,
-                'initial_amount' => $initialAmount,
-                'income_amount' => 0,
-                'outcome_amount' => 0,
-                'current_balance' => $initialAmount,
-            ]);
+            // 2. 根据交易类型和货币，计算余额变化
+            // 入账：RMB+、HKD-；出账：RMB-、HKD+
+            if ($transactionType === 'income') {
+                if ($currency === 'RMB') {
+                    // 入账时 RMB 增加
+                    $todayBalance->income_amount += $amount;
+                    $todayBalance->current_balance += $amount;
+                } else {
+                    // 入账时 HKD 减少
+                    $todayBalance->income_amount += $amount;
+                    $todayBalance->current_balance -= $amount;
+                }
+            } else { // outcome
+                if ($currency === 'RMB') {
+                    // 出账时 RMB 减少
+                    $todayBalance->outcome_amount += $amount;
+                    $todayBalance->current_balance -= $amount;
+                } else {
+                    // 出账时 HKD 增加
+                    $todayBalance->outcome_amount += $amount;
+                    $todayBalance->current_balance += $amount;
+                }
+            }
+            
+            // 3. 保存更新后的余额
+            $todayBalance->save();
+        });
+    }
+    
+    /**
+     * 回滚渠道余额（删除交易时调用）
+     * 对updateChannelBalance的反向操作
+     */
+    protected static function revertChannelBalance($transaction)
+    {
+        // 获取交易创建日期（而不是今天）
+        $transactionDate = Carbon::parse($transaction->created_at)->startOfDay();
+        
+        // 处理 RMB 余额回滚
+        static::revertCurrencyBalance(
+            $transaction->channel_id, 
+            'RMB', 
+            $transactionDate, 
+            $transaction->type, 
+            $transaction->rmb_amount
+        );
+        
+        // 处理 HKD 余额回滚
+        static::revertCurrencyBalance(
+            $transaction->channel_id, 
+            'HKD', 
+            $transactionDate, 
+            $transaction->type, 
+            $transaction->hkd_amount
+        );
+    }
+    
+    /**
+     * 回滚指定货币的余额（删除交易时调用）
+     */
+    protected static function revertCurrencyBalance($channelId, $currency, $transactionDate, $transactionType, $amount)
+    {
+        // 查找交易日期的余额记录
+        $balanceRecord = ChannelBalance::where('channel_id', $channelId)
+            ->where('currency', $currency)
+            ->where('date', $transactionDate)
+            ->first();
+        
+        // 如果记录不存在，说明可能已经被清理或从未创建，直接返回
+        if (!$balanceRecord) {
+            return;
         }
         
-        // 2. 根据交易类型和货币，计算余额变化
+        // 执行反向操作：减去之前加上的，加上之前减去的
         // 入账：RMB+、HKD-；出账：RMB-、HKD+
         if ($transactionType === 'income') {
             if ($currency === 'RMB') {
-                // 入账时 RMB 增加
-                $todayBalance->income_amount += $amount;
-                $todayBalance->current_balance += $amount;
+                // 回滚入账时的 RMB 增加
+                $balanceRecord->income_amount -= $amount;
+                $balanceRecord->current_balance -= $amount;
             } else {
-                // 入账时 HKD 减少
-                $todayBalance->income_amount += $amount;
-                $todayBalance->current_balance -= $amount;
+                // 回滚入账时的 HKD 减少
+                $balanceRecord->income_amount -= $amount;
+                $balanceRecord->current_balance += $amount;
             }
         } else { // outcome
             if ($currency === 'RMB') {
-                // 出账时 RMB 减少
-                $todayBalance->outcome_amount += $amount;
-                $todayBalance->current_balance -= $amount;
+                // 回滚出账时的 RMB 减少
+                $balanceRecord->outcome_amount -= $amount;
+                $balanceRecord->current_balance += $amount;
             } else {
-                // 出账时 HKD 增加
-                $todayBalance->outcome_amount += $amount;
-                $todayBalance->current_balance += $amount;
+                // 回滚出账时的 HKD 增加
+                $balanceRecord->outcome_amount -= $amount;
+                $balanceRecord->current_balance -= $amount;
             }
         }
         
-        // 3. 保存更新后的余额
-        $todayBalance->save();
+        $balanceRecord->save();
     }
 }

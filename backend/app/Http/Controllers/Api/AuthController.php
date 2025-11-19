@@ -42,7 +42,7 @@ class AuthController extends Controller
 
             // 创建新的token
             $accessToken = $user->createToken('access_token', [], now()->addMinutes(30))->plainTextToken;
-            $refreshToken = $user->createToken('refresh_token', ['refresh'], now()->addDays(7))->plainTextToken;
+            $refreshToken = $user->createToken('refresh_token', ['refresh'], now()->addDays(30))->plainTextToken;
 
             return response()->json([
                 'message' => '登录成功',
@@ -79,19 +79,55 @@ class AuthController extends Controller
 
     public function refresh(Request $request)
     {
-        $user = $request->user();
-        
-        // 删除当前access token
-        $user->tokens()->where('name', 'access_token')->delete();
-        
-        // 创建新的access token
-        $accessToken = $user->createToken('access_token', [], now()->addMinutes(30))->plainTextToken;
-        
-        return response()->json([
-            'access_token' => $accessToken,
-            'token_type' => 'Bearer',
-            'expires_in' => 30 * 60,
-        ]);
+        try {
+            $user = $request->user();
+            $token = $request->user()->currentAccessToken();
+            
+            // 记录token信息用于调试
+            \Log::info('Token refresh attempt', [
+                'user_id' => $user->id,
+                'token_name' => $token->name,
+                'token_abilities' => $token->abilities,
+                'token_expires_at' => $token->expires_at,
+                'token_created_at' => $token->created_at,
+            ]);
+            
+            // 验证token是否有refresh权限
+            if (!$token->can('refresh')) {
+                \Log::warning('Token refresh failed: no refresh ability', [
+                    'user_id' => $user->id,
+                    'token_name' => $token->name,
+                ]);
+                
+                return response()->json([
+                    'message' => '无效的刷新令牌',
+                    'error' => 'Invalid refresh token'
+                ], 401);
+            }
+            
+            // 删除旧的access token（保留refresh token）
+            $user->tokens()->where('name', 'access_token')->delete();
+            
+            // 创建新的access token
+            $accessToken = $user->createToken('access_token', [], now()->addMinutes(30))->plainTextToken;
+            
+            \Log::info('Token refresh successful', ['user_id' => $user->id]);
+            
+            return response()->json([
+                'access_token' => $accessToken,
+                'token_type' => 'Bearer',
+                'expires_in' => 30 * 60,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Token refresh error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => '刷新令牌失败',
+                'error' => 'Token refresh failed'
+            ], 500);
+        }
     }
 
     public function logout(Request $request)

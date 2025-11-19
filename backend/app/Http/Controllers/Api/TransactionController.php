@@ -113,9 +113,22 @@ class TransactionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            // 记录详细错误到日志
+            \Log::error('Transaction creation failed', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // 生产环境不返回详细错误信息
+            $message = app()->environment('production') 
+                ? '操作失败，请稍后重试' 
+                : $e->getMessage();
+            
             return response()->json([
-                'message' => '创建失败',
-                'error' => $e->getMessage()
+                'message' => $message,
+                'error_code' => 'TRANSACTION_CREATE_FAILED'
             ], 500);
         }
     }
@@ -213,9 +226,22 @@ class TransactionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            // 记录详细错误到日志
+            \Log::error('Batch transaction creation failed', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // 生产环境不返回详细错误信息
+            $message = app()->environment('production') 
+                ? '批量操作失败，请稍后重试' 
+                : $e->getMessage();
+            
             return response()->json([
-                'message' => '批量同步失败',
-                'error' => $e->getMessage()
+                'message' => $message,
+                'error_code' => 'BATCH_TRANSACTION_FAILED'
             ], 500);
         }
     }

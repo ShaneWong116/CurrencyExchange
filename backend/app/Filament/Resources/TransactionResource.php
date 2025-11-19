@@ -202,6 +202,20 @@ class TransactionResource extends Resource
                         default => $state,
                     }),
                     
+                TextColumn::make('settlement_status')
+                    ->label('结算状态')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'settled' => 'success',
+                        'unsettled' => 'gray',
+                        default => 'secondary',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'settled' => '已结算',
+                        'unsettled' => '未结算',
+                        default => $state,
+                    })
+                    ->sortable(),
                     
                 TextColumn::make('created_at')
                     ->label('创建时间')
@@ -267,12 +281,23 @@ class TransactionResource extends Resource
             // 表格顶部汇总由 ListTransactions::getTableHeader() 渲染
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->hidden(fn (Transaction $record): bool => $record->isSettled()),
+                Tables\Actions\DeleteAction::make()
+                    ->hidden(fn (Transaction $record): bool => $record->isSettled())
+                    ->requiresConfirmation()
+                    ->modalHeading('删除交易记录')
+                    ->modalDescription('确定要删除这条交易记录吗？删除后将自动回滚渠道余额。')
+                    ->modalSubmitActionLabel('确认删除'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('批量删除交易记录')
+                        ->modalDescription('确定要删除选中的交易记录吗？只有未结算的记录会被删除，已结算的记录会被跳过。')
+                        ->modalSubmitActionLabel('确认删除')
+                        ->deselectRecordsAfterCompletion(),
                     ExportBulkAction::make()
                         ->exporter(TransactionExporter::class),
                 ]),

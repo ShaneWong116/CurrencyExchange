@@ -45,7 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/balance-overview', [\App\Http\Controllers\Api\TransactionController::class, 'balanceOverview']);
     Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
     Route::get('/transactions/{transaction}', [\App\Http\Controllers\Api\TransactionController::class, 'show']);
-    Route::post('/transactions/batch', [\App\Http\Controllers\Api\TransactionController::class, 'batchStore']);
+    Route::post('/transactions/batch', [\App\Http\Controllers\Api\TransactionController::class, 'batchStore'])
+        ->middleware('throttle:10,1'); // 批量操作限流：每分钟10次
     // 首页本金
     Route::get('/home/principal', [\App\Http\Controllers\Api\HomeController::class, 'principal']);
 
@@ -73,10 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/images', [\App\Http\Controllers\Api\ImageController::class, 'store']);
     Route::get('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'show']);
     Route::delete('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'destroy']);
-    Route::post('/images/batch', [\App\Http\Controllers\Api\ImageController::class, 'batchUpload']);
+    Route::post('/images/batch', [\App\Http\Controllers\Api\ImageController::class, 'batchUpload'])
+        ->middleware('throttle:5,1'); // 批量图片上传限流：每分钟5次
     
-    // 后台管理路由
-    Route::prefix('admin')->group(function () {
+    // 后台管理路由 - 需要管理员权限
+    Route::prefix('admin')->middleware('admin')->group(function () {
         // 余额管理
         Route::get('/balance/overview', [\App\Http\Controllers\Api\Admin\BalanceController::class, 'overview']);
         Route::get('/balance/channel/{channelId}', [\App\Http\Controllers\Api\Admin\BalanceController::class, 'channelDetail']);
@@ -101,8 +103,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/settings/{key}', [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
         Route::post('/settings/reset', [\App\Http\Controllers\Api\Admin\SettingsController::class, 'reset']);
         Route::get('/system/info', [\App\Http\Controllers\Api\Admin\SettingsController::class, 'systemInfo']);
-        // 数据清理
-        Route::post('/data/cleanup', [\App\Http\Controllers\Api\CleanupController::class, 'cleanup']);
+        
+        // 数据清理 - 严格限流
+        Route::post('/data/cleanup', [\App\Http\Controllers\Api\CleanupController::class, 'cleanup'])
+            ->middleware('throttle:1,10'); // 每10分钟只能执行1次
     });
 });
 

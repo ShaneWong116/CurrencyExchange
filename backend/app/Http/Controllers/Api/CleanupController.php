@@ -25,9 +25,9 @@ class CleanupController extends Controller
             'verification_password' => 'required|string',
         ]);
 
-        // 二次验证（示例：与env中的ADMIN_VERIFY_PASSWORD比对）
+        // 二次验证（使用 hash_equals 防止时序攻击）
         $expected = env('ADMIN_VERIFY_PASSWORD');
-        if (!$expected || $request->verification_password !== $expected) {
+        if (!$expected || !hash_equals($expected, $request->verification_password)) {
             return response()->json([
                 'success' => false,
                 'error_code' => 1003,
