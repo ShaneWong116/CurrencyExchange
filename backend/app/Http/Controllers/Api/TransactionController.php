@@ -74,10 +74,12 @@ class TransactionController extends Controller
             
             // 计算即时买断利润
             $instantProfit = null;
-            if ($request->type === 'instant_buyout' && $request->instant_rate) {
-                // 利润 = 人民币金额 ÷ 即时买断汇率 - 港币金额,保留十位向上取整
-                $profit = ($request->rmb_amount / $request->instant_rate) - $request->hkd_amount;
-                $instantProfit = ceil($profit / 10) * 10;
+            if ($request->type === 'instant_buyout') {
+                $instantProfit = $this->calculateInstantBuyoutProfit(
+                    $request->rmb_amount,
+                    $request->instant_rate,
+                    $request->hkd_amount
+                );
             }
             
             $transaction = Transaction::create([
@@ -180,10 +182,12 @@ class TransactionController extends Controller
 
                 // 计算即时买断利润
                 $instantProfit = null;
-                if ($transactionData['type'] === 'instant_buyout' && !empty($transactionData['instant_rate'])) {
-                    // 利润 = 人民币金额 ÷ 即时买断汇率 - 港币金额,保留十位向上取整
-                    $profit = ($transactionData['rmb_amount'] / $transactionData['instant_rate']) - $transactionData['hkd_amount'];
-                    $instantProfit = ceil($profit / 10) * 10;
+                if ($transactionData['type'] === 'instant_buyout') {
+                    $instantProfit = $this->calculateInstantBuyoutProfit(
+                        $transactionData['rmb_amount'],
+                        $transactionData['instant_rate'] ?? null,
+                        $transactionData['hkd_amount']
+                    );
                 }
                 
                 $transaction = Transaction::create([
@@ -244,6 +248,21 @@ class TransactionController extends Controller
                 'error_code' => 'BATCH_TRANSACTION_FAILED'
             ], 500);
         }
+
+    /**
+     * 计算即时买断利润：
+     * 先将人民币按买断汇率折算成港币，并在十位四舍五入得到“实值”，
+     * 再与实际使用的港币金额求差得到利润。
+     */
+    protected function calculateInstantBuyoutProfit(?float $rmbAmount, ?float $instantRate, ?float $hkdAmount): ?float
+    {
+        if (!$instantRate || $instantRate <= 0 || $rmbAmount === null || $hkdAmount === null) {
+            return null;
+        }
+
+        $convertedHkd = round($rmbAmount / $instantRate, -1, PHP_ROUND_HALF_UP);
+
+        return $convertedHkd - $hkdAmount;
     }
 
     /**

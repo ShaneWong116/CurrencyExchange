@@ -207,7 +207,8 @@ class SettlementController extends Controller
                 $request->input('notes'),
                 $userId,
                 $userType,
-                $request->input('settlement_date')  // 传入日期
+                $request->input('settlement_date'),  // 传入日期
+                $request->input('instant_buyout_rate')
             );
 
             // 返回结余详情

@@ -106,6 +106,8 @@ class SettlementService
      */
     public function getPreview($instantBuyoutRate = null)
     {
+        $instantBuyoutRate = $instantBuyoutRate !== null ? (float) $instantBuyoutRate : null;
+
         // 1. 获取当前本金和港币结余
         $currentCapital = BalanceAdjustment::getCurrentCapital();
         $currentHkdBalance = BalanceAdjustment::getCurrentHkdBalance();
@@ -160,14 +162,28 @@ class SettlementService
         $unsettledInstantTransactions = Transaction::unsettled()
             ->where('type', 'instant_buyout')
             ->get();
-        
-        // 即时买断利润 = 所有未结余即时买断交易的利润之和
-        // 每笔即时买断利润都四舍五入到十位再累计，确保总利润仍为10位精度
-        $instantProfit = $unsettledInstantTransactions->sum(function ($transaction) {
-            return round($transaction->instant_profit, -1, PHP_ROUND_HALF_UP);
-        });
-        $instantHkdCost = $unsettledInstantTransactions->sum('hkd_amount');
-        $instantRmbTotal = $unsettledInstantTransactions->sum('rmb_amount');
+
+        $instantProfit = 0;
+        $instantHkdCost = 0; // 折算后的港币实值
+        $instantActualHkdTotal = 0;
+        $instantRmbTotal = 0;
+        $needsInstantRate = false;
+
+        foreach ($unsettledInstantTransactions as $transaction) {
+            $rate = $transaction->instant_rate ?? $instantBuyoutRate;
+
+            $instantRmbTotal += $transaction->rmb_amount;
+            $instantActualHkdTotal += $transaction->hkd_amount;
+
+            if (!$rate || $rate <= 0) {
+                $needsInstantRate = true;
+                continue;
+            }
+
+            $convertedHkd = round($transaction->rmb_amount / $rate, -1, PHP_ROUND_HALF_UP);
+            $instantHkdCost += $convertedHkd;
+            $instantProfit += $convertedHkd - $transaction->hkd_amount;
+        }
 
         // 7. 总利润(四舍五入到个位)
         $totalProfit = round($outgoingProfit + $instantProfit, 0, PHP_ROUND_HALF_UP);
@@ -196,7 +212,9 @@ class SettlementService
             
             // 即时买断相关
             'instant_hkd_cost' => round($instantHkdCost, 2),
+            'instant_actual_hkd' => round($instantActualHkdTotal, 2),
             'instant_rmb_total' => round($instantRmbTotal, 2),
+            'needs_instant_rate' => $needsInstantRate,
             
             // 预期结余后状态（不含其他支出）
             'expected_new_capital' => round($expectedNewCapital, 2),
@@ -226,11 +244,12 @@ class SettlementService
      * @param int|null $userId 执行结余的用户ID
      * @param string $userType 用户类型: 'admin' 或 'field'
      * @param string|null $settlementDate 结余日期(可选,默认今天)
+     * @param float|null $instantBuyoutRate 缺少逐笔汇率时使用的即时买断汇率
      * @return Settlement
      */
-    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin', ?string $settlementDate = null)
+    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin', ?string $settlementDate = null, ?float $instantBuyoutRate = null)
     {
-        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType, $settlementDate) {
+        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType, $settlementDate, $instantBuyoutRate) {
             // 1. 确定结余日期
             $settlementDate = $settlementDate ?? now()->toDateString();
             
@@ -251,8 +270,8 @@ class SettlementService
                 throw new Exception('确认密码错误');
             }
             
-            // 5. 获取预览数据（即时买断利润已在录入时计算）
-            $preview = $this->getPreview();
+            // 5. 获取预览数据（即时买断利润按新的折算逻辑计算）
+            $preview = $this->getPreview($instantBuyoutRate);
             
             // 6. 业务校验
             if (!$preview['can_settle']) {
@@ -261,6 +280,10 @@ class SettlementService
             
             if ($preview['settlement_rate'] <= 0) {
                 throw new Exception('结余汇率计算异常，请检查港币结余是否正确');
+            }
+
+            if (!empty($preview['needs_instant_rate'])) {
+                throw new Exception('存在即时买断交易缺少汇率，请先填写即时买断汇率');
             }
             
             // 7. 计算其他支出总额
@@ -287,7 +310,7 @@ class SettlementService
                 'profit' => $preview['profit'],
                 'outgoing_profit' => $preview['outgoing_profit'],
                 'instant_profit' => $preview['instant_profit'],
-                'instant_buyout_rate' => null, // 不再使用统一汇率，每笔交易已记录自己的利润
+                'instant_buyout_rate' => $instantBuyoutRate,
                 'other_expenses_total' => $otherExpensesTotal,
                 'new_capital' => $newCapital,
                 'new_hkd_balance' => $newHkdBalance,
