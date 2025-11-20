@@ -162,7 +162,10 @@ class SettlementService
             ->get();
         
         // 即时买断利润 = 所有未结余即时买断交易的利润之和
-        $instantProfit = $unsettledInstantTransactions->sum('instant_profit');
+        // 每笔即时买断利润都四舍五入到十位再累计，确保总利润仍为10位精度
+        $instantProfit = $unsettledInstantTransactions->sum(function ($transaction) {
+            return round($transaction->instant_profit, -1, PHP_ROUND_HALF_UP);
+        });
         $instantHkdCost = $unsettledInstantTransactions->sum('hkd_amount');
         $instantRmbTotal = $unsettledInstantTransactions->sum('rmb_amount');
 
