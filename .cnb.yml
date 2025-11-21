@@ -2,7 +2,15 @@ $:
   push:
     - services:
         - docker
+        - node
       stages:
+        # 构建前端
+        - name: build frontend
+          script: |
+            cd frontend
+            npm install
+            npm run build
+            cd ..
         # 后端镜像构建&推送
         - name: build backend image
           script: |
