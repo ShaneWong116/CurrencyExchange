@@ -1,14 +1,36 @@
-# 这里是一个示例 .cnb.yml
-  
-  # 匹配master分支
-  master:
-    # 触发事件为push事件
-    push:
-      # 这里是阶段任务示例，可配置任意多个阶段，这里以一个阶段为例
-      - name: "your first CNB building"
-        stages:
-          # 使用流水线输出你的构建配置数据
-          - name: echo your build data
-            script: echo ${CNB_BUILD_USER} 通过 ${CNB_BRANCH} 分支触发了 ${CNB_EVENT} 事件
-  
-  # 更多资料见 https://docs.cnb.cool/build/quick-start.html
+# CNB CI/CD 流水线配置
+# 使用 Docker 制品库进行镜像构建和推送
+
+main:
+  push:
+    - services:
+        - docker
+        - node
+      stages:
+        # Docker 制品库登录
+        - name: docker login
+          script: docker login -u cnb -p ${CNB_DOCKER_TOKEN} ${CNB_DOCKER_REGISTRY}
+        # 构建前端
+        - name: build frontend
+          script: |
+            cd frontend
+            npm install
+            npm run build
+            cd ..
+        # 构建后端镜像
+        - name: build backend image
+          script: |
+            cd backend
+            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest .
+            cd ..
+        # 构建 Nginx 镜像
+        - name: build nginx image
+          script: docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest .
+        # 推送后端镜像
+        - name: push backend image
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest
+        # 推送 Nginx 镜像
+        - name: push nginx image
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest
+
+# 更多资料见 https://docs.cnb.cool/zh/artifact/docker.html

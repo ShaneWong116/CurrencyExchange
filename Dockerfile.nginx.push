@@ -1,1 +1,21 @@
- 
+FROM nginx:alpine
+
+# 安装 wget 用于健康检查
+RUN apk add --no-cache wget
+
+# 复制前端构建产物到 Nginx 默认路径
+COPY frontend/dist /usr/share/nginx/html
+
+# 复制 Nginx 配置
+COPY docker/nginx/conf.d /etc/nginx/conf.d
+
+# 设置权限
+RUN chmod -R 755 /usr/share/nginx/html
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost || exit 1
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]
