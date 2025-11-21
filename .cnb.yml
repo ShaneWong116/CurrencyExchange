@@ -1,6 +1,3 @@
-# CNB CI/CD 流水线配置
-# 使用 Docker 制品库进行镜像构建和推送
-
 main:
   push:
     - services:
