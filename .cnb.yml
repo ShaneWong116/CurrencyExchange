@@ -2,32 +2,17 @@ main:
   push:
     - services:
         - docker
-        - node
       stages:
-        # Docker 制品库登录
-        - name: docker login
-          script: docker login -u cnb -p ${CNB_DOCKER_TOKEN} ${CNB_DOCKER_REGISTRY}
-        # 构建前端
-        - name: build frontend
-          script: |
-            cd frontend
-            npm install
-            npm run build
-            cd ..
-        # 构建后端镜像
+        # 后端镜像构建&推送
         - name: build backend image
           script: |
             cd backend
             docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest .
             cd ..
-        # 构建 Nginx 镜像
-        - name: build nginx image
-          script: docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest .
-        # 推送后端镜像
         - name: push backend image
           script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest
-        # 推送 Nginx 镜像
+        # Nginx 镜像构建&推送
+        - name: build nginx image
+          script: docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest .
         - name: push nginx image
           script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest
-
-# 更多资料见 https://docs.cnb.cool/zh/artifact/docker.html
