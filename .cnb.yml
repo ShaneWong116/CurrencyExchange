@@ -2,10 +2,10 @@ $:
   push:
     - services:
         - docker
-        - node
       stages:
         # 构建前端
         - name: build frontend
+          image: node:22
           script: |
             cd frontend
             npm install
