@@ -6,7 +6,7 @@ $:
         # 构建前端
         - name: build frontend
           image: node:22
-          timeout: 1800000
+          timeout: 180000
           script: |
             cd frontend
             npm install
@@ -16,21 +16,12 @@ $:
         - name: build backend image
           script: |
             cd backend
-            BUILD_TAG=$(git rev-parse --short HEAD)
-            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/backend:${BUILD_TAG} -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/backend:latest .
+            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest .
             cd ..
         - name: push backend image
-          script: |
-            BUILD_TAG=$(git rev-parse --short HEAD)
-            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/backend:${BUILD_TAG}
-            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/backend:latest
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest
         # Nginx 镜像构建&推送
         - name: build nginx image
-          script: |
-            BUILD_TAG=$(git rev-parse --short HEAD)
-            docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/nginx:${BUILD_TAG} -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/nginx:latest .
+          script: docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest .
         - name: push nginx image
-          script: |
-            BUILD_TAG=$(git rev-parse --short HEAD)
-            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/nginx:${BUILD_TAG}
-            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/nginx:latest
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest
