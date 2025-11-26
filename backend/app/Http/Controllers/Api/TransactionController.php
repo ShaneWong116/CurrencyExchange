@@ -248,6 +248,7 @@ class TransactionController extends Controller
                 'error_code' => 'BATCH_TRANSACTION_FAILED'
             ], 500);
         }
+    }
 
     /**
      * 计算即时买断利润：
@@ -287,7 +288,7 @@ class TransactionController extends Controller
         foreach ($types as $type) {
             $typeQuery = (clone $base)->where('type', $type);
             $byType[$type] = [
-                'rmb_amount' => round((float) $typeQuery->sum('rmb_amount'), 2),
+                'rmb_amount' => round((float) (clone $typeQuery)->sum('rmb_amount'), 2),
                 'hkd_amount' => round((float) (clone $typeQuery)->sum('hkd_amount'), 2),
                 'count' => (clone $typeQuery)->count(),
             ];
@@ -302,7 +303,7 @@ class TransactionController extends Controller
         $currencyTop3 = array_slice($currencyTop3, 0, 3);
 
         // 渠道Top3（按HKD净额）
-        $channelTop3 = Transaction::selectRaw('channel_id, SUM(CASE WHEN type="income" THEN hkd_amount WHEN type="outcome" THEN -hkd_amount ELSE 0 END) as amount')
+        $channelTop3 = Transaction::selectRaw("channel_id, SUM(CASE WHEN type='income' THEN hkd_amount WHEN type='outcome' THEN -hkd_amount ELSE 0 END) as amount")
             ->where('user_id', $userId)
             ->where('settlement_status', 'unsettled')
             ->groupBy('channel_id')
