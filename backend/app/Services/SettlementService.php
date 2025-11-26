@@ -115,8 +115,15 @@ class SettlementService
         // 2. 计算当前各渠道人民币余额汇总
         $channels = Channel::all();
         $rmbBalanceTotal = 0;
+        $channelRmbBalances = [];
         foreach ($channels as $channel) {
-            $rmbBalanceTotal += $channel->getRmbBalance();
+            $rmbBalance = $channel->getRmbBalance();
+            $rmbBalanceTotal += $rmbBalance;
+            $channelRmbBalances[] = [
+                'id' => $channel->id,
+                'name' => $channel->name,
+                'rmb_balance' => round($rmbBalance, 2),
+            ];
         }
 
         // 3. 获取未结余的入账交易数据（不包括即时买断）
@@ -196,6 +203,7 @@ class SettlementService
             // 当前状态（用于核对）
             'previous_capital' => $currentCapital,  // 原本金
             'rmb_balance' => round($rmbBalanceTotal, 2),  // 人民币结余
+            'channel_rmb_balances' => $channelRmbBalances,  // 各渠道人民币余额明细
             'total_profit' => $totalProfit,  // 利润（本次结余）
             'new_capital' => round($expectedNewCapital, 2),  // 新本金（结余后）
             

@@ -45,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/balance-overview', [\App\Http\Controllers\Api\TransactionController::class, 'balanceOverview']);
     Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
     Route::get('/transactions/{transaction}', [\App\Http\Controllers\Api\TransactionController::class, 'show']);
+    Route::put('/transactions/{transaction}', [\App\Http\Controllers\Api\TransactionController::class, 'update']);
+    Route::delete('/transactions/{transaction}', [\App\Http\Controllers\Api\TransactionController::class, 'destroy']);
     Route::post('/transactions/batch', [\App\Http\Controllers\Api\TransactionController::class, 'batchStore'])
         ->middleware('throttle:10,1'); // 批量操作限流：每分钟10次
     // 首页本金

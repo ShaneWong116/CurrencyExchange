@@ -33,14 +33,40 @@
                 </q-item-section>
               </q-item>
               
-              <q-item>
+              <q-item clickable @click="showChannelRmbBalances = !showChannelRmbBalances">
                 <q-item-section>
                   <q-item-label class="text-grey-7">✓ 人民币结余</q-item-label>
                   <q-item-label class="text-h6 text-weight-bold text-primary">
                     {{ formatCurrency(preview.rmb_balance) }} CNY
+                    <q-icon 
+                      :name="showChannelRmbBalances ? 'expand_less' : 'expand_more'" 
+                      size="20px" 
+                      class="q-ml-xs"
+                    />
+                  </q-item-label>
+                  <q-item-label caption class="text-grey-6">
+                    点击查看各渠道余额
                   </q-item-label>
                 </q-item-section>
               </q-item>
+              
+              <!-- 各渠道人民币余额明细 -->
+              <q-slide-transition>
+                <div v-show="showChannelRmbBalances">
+                  <q-list dense class="bg-grey-1 q-mx-md q-mb-sm" style="border-radius: 8px;">
+                    <q-item v-for="channel in preview.channel_rmb_balances" :key="channel.id">
+                      <q-item-section>
+                        <q-item-label class="text-grey-8">{{ channel.name }}</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-item-label class="text-primary text-weight-medium">
+                          {{ formatCurrency(channel.rmb_balance) }} CNY
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
+              </q-slide-transition>
               
               <q-item>
                 <q-item-section>
@@ -335,6 +361,7 @@ const loading = ref(false)
 const preview = ref({
   previous_capital: 0,
   rmb_balance: 0,
+  channel_rmb_balances: [],
   total_profit: 0,
   new_capital: 0,
   outgoing_profit: 0,
@@ -342,6 +369,7 @@ const preview = ref({
   settlement_rate: 0,
   needs_instant_rate: false,
 })
+const showChannelRmbBalances = ref(false)
 const instantBuyoutRate = ref(null)
 const expenses = ref([])
 const notes = ref('')

@@ -83,7 +83,7 @@
       </div>
 
       <div class="transaction-list">
-        <div v-for="t in filteredTransactions" :key="t.id" class="transaction-item">
+        <div v-for="t in filteredTransactions" :key="t.id" class="transaction-item" @click="openEditDialog(t)">
           <div class="transaction-icon" :class="getIconClass(t.type)">
             <q-icon :name="getTypeIcon(t.type)" size="20px" color="white" />
           </div>
@@ -337,6 +337,108 @@
       </q-card>
     </q-dialog>
 
+    <!-- 编辑交易对话框 -->
+    <q-dialog v-model="showEditDialog" persistent>
+      <q-card style="min-width: 350px; max-width: 450px; width: 100%;">
+        <q-card-section class="bg-primary text-white">
+          <div class="text-h6">
+            <q-icon name="edit" class="q-mr-sm" />
+            修改交易
+          </div>
+          <div class="text-caption">{{ typeLabel(editingTransaction?.type) }} - {{ editingTransaction?.channel?.name }}</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <q-form @submit.prevent="submitEdit" class="q-gutter-md">
+            <!-- 渠道选择 -->
+            <q-select
+              v-model="editForm.channel_id"
+              :options="channelOptions"
+              option-value="id"
+              option-label="name"
+              emit-value
+              map-options
+              label="渠道"
+              outlined
+              dense
+            />
+
+            <!-- 人民币金额 -->
+            <q-input
+              v-model.number="editForm.rmb_amount"
+              type="number"
+              label="人民币金额"
+              outlined
+              dense
+              prefix="¥"
+              :rules="[val => val > 0 || '金额必须大于0']"
+            />
+
+            <!-- 港币金额 -->
+            <q-input
+              v-model.number="editForm.hkd_amount"
+              type="number"
+              label="港币金额"
+              outlined
+              dense
+              prefix="HK$"
+              :rules="[val => val > 0 || '金额必须大于0']"
+            />
+
+            <!-- 汇率 -->
+            <q-input
+              v-model.number="editForm.exchange_rate"
+              type="number"
+              step="0.001"
+              label="汇率"
+              outlined
+              dense
+              :rules="[val => val > 0 || '汇率必须大于0']"
+            />
+
+            <!-- 即时买断汇率（仅即时买断类型显示） -->
+            <q-input
+              v-if="editingTransaction?.type === 'instant_buyout'"
+              v-model.number="editForm.instant_rate"
+              type="number"
+              step="0.001"
+              label="即时买断汇率"
+              outlined
+              dense
+            />
+
+            <!-- 备注 -->
+            <q-input
+              v-model="editForm.notes"
+              type="textarea"
+              label="备注"
+              outlined
+              dense
+              rows="2"
+            />
+          </q-form>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="取消" color="grey-7" @click="closeEditDialog" />
+          <q-btn 
+            flat 
+            label="删除" 
+            color="negative" 
+            @click="confirmDelete"
+            :loading="isDeleting"
+          />
+          <q-btn 
+            unelevated 
+            label="保存" 
+            color="primary" 
+            @click="submitEdit"
+            :loading="isSubmittingEdit"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <BottomNavigation />
   </q-page>
 </template>
@@ -375,7 +477,21 @@ export default {
       settlementPassword: '',
       showPassword: false,
       passwordError: '',
-      isSubmittingSettlement: false
+      isSubmittingSettlement: false,
+      // 编辑交易相关
+      showEditDialog: false,
+      editingTransaction: null,
+      editForm: {
+        channel_id: null,
+        rmb_amount: 0,
+        hkd_amount: 0,
+        exchange_rate: 0,
+        instant_rate: null,
+        notes: ''
+      },
+      channelOptions: [],
+      isSubmittingEdit: false,
+      isDeleting: false
     }
   },
   computed: {
@@ -393,7 +509,8 @@ export default {
     await Promise.all([
       this.fetchBalanceOverview(),
       this.fetchStats(),
-      this.fetchTransactions()
+      this.fetchTransactions(),
+      this.fetchChannels()
     ])
   },
   methods: {
@@ -703,6 +820,129 @@ export default {
       this.settlementPassword = ''
       this.passwordError = ''
       this.previewData = null
+    },
+    // 获取渠道列表
+    async fetchChannels() {
+      try {
+        const res = await api.get('/channels')
+        if (res.data) {
+          this.channelOptions = res.data.data || res.data
+        }
+      } catch (error) {
+        console.error('Failed to fetch channels:', error)
+      }
+    },
+    // 打开编辑对话框
+    openEditDialog(transaction) {
+      this.editingTransaction = transaction
+      this.editForm = {
+        channel_id: transaction.channel_id,
+        rmb_amount: Number(transaction.rmb_amount),
+        hkd_amount: Number(transaction.hkd_amount),
+        exchange_rate: Number(transaction.exchange_rate),
+        instant_rate: transaction.instant_rate ? Number(transaction.instant_rate) : null,
+        notes: transaction.notes || ''
+      }
+      this.showEditDialog = true
+    },
+    // 关闭编辑对话框
+    closeEditDialog() {
+      this.showEditDialog = false
+      this.editingTransaction = null
+      this.editForm = {
+        channel_id: null,
+        rmb_amount: 0,
+        hkd_amount: 0,
+        exchange_rate: 0,
+        instant_rate: null,
+        notes: ''
+      }
+    },
+    // 提交编辑
+    async submitEdit() {
+      if (!this.editingTransaction) return
+      
+      this.isSubmittingEdit = true
+      try {
+        const res = await api.put(`/transactions/${this.editingTransaction.id}`, this.editForm)
+        
+        if (res.data?.success) {
+          this.$q.notify({
+            type: 'positive',
+            message: '交易更新成功',
+            timeout: 1500
+          })
+          
+          this.closeEditDialog()
+          
+          // 刷新数据
+          await Promise.all([
+            this.fetchBalanceOverview(),
+            this.fetchStats(),
+            this.fetchTransactions(true)
+          ])
+        }
+      } catch (error) {
+        console.error('Update transaction failed:', error)
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || '更新失败'
+        })
+      } finally {
+        this.isSubmittingEdit = false
+      }
+    },
+    // 确认删除
+    confirmDelete() {
+      this.$q.dialog({
+        title: '确认删除',
+        message: '确定要删除这笔交易吗？此操作不可恢复。',
+        cancel: {
+          label: '取消',
+          flat: true
+        },
+        ok: {
+          label: '删除',
+          color: 'negative'
+        },
+        persistent: true
+      }).onOk(() => {
+        this.deleteTransaction()
+      })
+    },
+    // 删除交易
+    async deleteTransaction() {
+      if (!this.editingTransaction) return
+      
+      this.isDeleting = true
+      try {
+        const res = await api.delete(`/transactions/${this.editingTransaction.id}`)
+        
+        if (res.data?.success) {
+          this.$q.notify({
+            type: 'positive',
+            message: '交易删除成功',
+            timeout: 1500
+          })
+          
+          this.closeEditDialog()
+          
+          // 刷新数据
+          await Promise.all([
+            this.fetchBalanceOverview(),
+            this.fetchStats(),
+            this.fetchTransactions(true)
+          ])
+        }
+      } catch (error) {
+        console.error('Delete transaction failed:', error)
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || '删除失败'
+        })
+      } finally {
+        this.isDeleting = false
+      }
     }
   }
 }

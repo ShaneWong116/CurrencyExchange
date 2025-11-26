@@ -331,6 +331,177 @@ class TransactionController extends Controller
     }
 
     /**
+     * 更新未结算的交易
+     */
+    public function update(Request $request, Transaction $transaction)
+    {
+        // 确保用户只能修改自己的交易
+        if ($transaction->user_id !== $request->user()->id) {
+            return response()->json(['message' => '无权修改此交易'], 403);
+        }
+
+        // 只允许修改未结算的交易
+        if ($transaction->settlement_status !== 'unsettled') {
+            return response()->json(['message' => '已结算的交易不能修改'], 400);
+        }
+
+        $request->validate([
+            'rmb_amount' => 'required|numeric|min:0',
+            'hkd_amount' => 'required|numeric|min:0',
+            'exchange_rate' => 'required|numeric|min:0',
+            'instant_rate' => 'nullable|numeric|min:0',
+            'channel_id' => 'required|exists:channels,id',
+            'notes' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 保存旧数据用于回滚渠道余额
+            $oldChannelId = $transaction->channel_id;
+            $oldType = $transaction->type;
+            $oldRmbAmount = $transaction->rmb_amount;
+            $oldHkdAmount = $transaction->hkd_amount;
+
+            // 回滚旧渠道的余额变动
+            $oldChannel = Channel::find($oldChannelId);
+            if ($oldChannel) {
+                if ($oldType === 'income') {
+                    $oldChannel->decrement('rmb_balance', $oldRmbAmount);
+                    $oldChannel->decrement('hkd_balance', $oldHkdAmount);
+                } elseif ($oldType === 'outcome' || $oldType === 'instant_buyout') {
+                    $oldChannel->increment('rmb_balance', $oldRmbAmount);
+                    $oldChannel->increment('hkd_balance', $oldHkdAmount);
+                }
+            }
+
+            // 计算即时买断利润
+            $instantProfit = null;
+            if ($transaction->type === 'instant_buyout') {
+                $instantProfit = $this->calculateInstantBuyoutProfit(
+                    $request->rmb_amount,
+                    $request->instant_rate,
+                    $request->hkd_amount
+                );
+            }
+
+            // 更新交易记录
+            $transaction->update([
+                'rmb_amount' => $request->rmb_amount,
+                'hkd_amount' => $request->hkd_amount,
+                'exchange_rate' => $request->exchange_rate,
+                'instant_rate' => $request->instant_rate,
+                'instant_profit' => $instantProfit,
+                'channel_id' => $request->channel_id,
+                'notes' => $request->notes,
+            ]);
+
+            // 应用新渠道的余额变动
+            $newChannel = Channel::find($request->channel_id);
+            if ($newChannel) {
+                if ($transaction->type === 'income') {
+                    $newChannel->increment('rmb_balance', $request->rmb_amount);
+                    $newChannel->increment('hkd_balance', $request->hkd_amount);
+                } elseif ($transaction->type === 'outcome' || $transaction->type === 'instant_buyout') {
+                    $newChannel->decrement('rmb_balance', $request->rmb_amount);
+                    $newChannel->decrement('hkd_balance', $request->hkd_amount);
+                }
+            }
+
+            // 如果渠道变更，更新交易计数
+            if ($oldChannelId !== $request->channel_id) {
+                if ($oldChannel) {
+                    $oldChannel->decrement('transaction_count');
+                }
+                if ($newChannel) {
+                    $newChannel->increment('transaction_count');
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => '交易更新成功',
+                'transaction' => $transaction->fresh()->load(['channel', 'user'])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('Transaction update failed', [
+                'transaction_id' => $transaction->id,
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $message = app()->environment('production') 
+                ? '更新失败，请稍后重试' 
+                : $e->getMessage();
+            
+            return response()->json([
+                'message' => $message,
+                'error_code' => 'TRANSACTION_UPDATE_FAILED'
+            ], 500);
+        }
+    }
+
+    /**
+     * 删除未结算的交易
+     */
+    public function destroy(Request $request, Transaction $transaction)
+    {
+        // 确保用户只能删除自己的交易
+        if ($transaction->user_id !== $request->user()->id) {
+            return response()->json(['message' => '无权删除此交易'], 403);
+        }
+
+        // 只允许删除未结算的交易
+        if ($transaction->settlement_status !== 'unsettled') {
+            return response()->json(['message' => '已结算的交易不能删除'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 回滚渠道余额变动
+            $channel = Channel::find($transaction->channel_id);
+            if ($channel) {
+                if ($transaction->type === 'income') {
+                    $channel->decrement('rmb_balance', $transaction->rmb_amount);
+                    $channel->decrement('hkd_balance', $transaction->hkd_amount);
+                } elseif ($transaction->type === 'outcome' || $transaction->type === 'instant_buyout') {
+                    $channel->increment('rmb_balance', $transaction->rmb_amount);
+                    $channel->increment('hkd_balance', $transaction->hkd_amount);
+                }
+                $channel->decrement('transaction_count');
+            }
+
+            $transaction->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => '交易删除成功'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('Transaction delete failed', [
+                'transaction_id' => $transaction->id,
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => '删除失败，请稍后重试',
+                'error_code' => 'TRANSACTION_DELETE_FAILED'
+            ], 500);
+        }
+    }
+
+    /**
      * 获取渠道余额总览（外勤端使用）
      * 返回当前人民币余额（各渠道汇总）和港币余额（系统设置）
      */
