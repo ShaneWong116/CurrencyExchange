@@ -1,0 +1,27 @@
+$:
+  push:
+    - services:
+        - docker
+      stages:
+        # 构建前端
+        - name: build frontend
+          image: node:22
+          timeout: 180000
+          script: |
+            cd frontend
+            npm install
+            npm run build
+            cd ..
+        # 后端镜像构建&推送
+        - name: build backend image
+          script: |
+            cd backend
+            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest .
+            cd ..
+        - name: push backend image
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:backend-latest
+        # Nginx 镜像构建&推送
+        - name: build nginx image
+          script: docker build -f Dockerfile.nginx.push -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest .
+        - name: push nginx image
+          script: docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:nginx-latest
