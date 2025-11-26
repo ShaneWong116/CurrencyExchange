@@ -499,7 +499,9 @@ const confirmSettlement = async () => {
     const data = {
       password: password.value,
       settlement_date: settlementDate.value.replace(/\//g, '-'),  // 转换为YYYY-MM-DD格式
-      expenses: expenses.value.filter(exp => exp.item_name && exp.amount > 0),
+      expenses: expenses.value
+        .filter(exp => exp.amount > 0)
+        .map(exp => ({ item_name: exp.item_name || '支出', amount: exp.amount })),
       notes: notes.value || null
     }
     
