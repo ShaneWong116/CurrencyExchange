@@ -356,23 +356,11 @@ class TransactionController extends Controller
 
         DB::beginTransaction();
         try {
-            // 保存旧数据用于回滚渠道余额
+            // 保存旧数据
             $oldChannelId = $transaction->channel_id;
             $oldType = $transaction->type;
             $oldRmbAmount = $transaction->rmb_amount;
             $oldHkdAmount = $transaction->hkd_amount;
-
-            // 回滚旧渠道的余额变动
-            $oldChannel = Channel::find($oldChannelId);
-            if ($oldChannel) {
-                if ($oldType === 'income') {
-                    $oldChannel->decrement('rmb_balance', $oldRmbAmount);
-                    $oldChannel->decrement('hkd_balance', $oldHkdAmount);
-                } elseif ($oldType === 'outcome' || $oldType === 'instant_buyout') {
-                    $oldChannel->increment('rmb_balance', $oldRmbAmount);
-                    $oldChannel->increment('hkd_balance', $oldHkdAmount);
-                }
-            }
 
             // 计算即时买断利润
             $instantProfit = null;
@@ -384,45 +372,38 @@ class TransactionController extends Controller
                 );
             }
 
-            // 更新交易记录
-            $transaction->update([
-                'rmb_amount' => $request->rmb_amount,
-                'hkd_amount' => $request->hkd_amount,
-                'exchange_rate' => $request->exchange_rate,
-                'instant_rate' => $request->instant_rate,
-                'instant_profit' => $instantProfit,
-                'channel_id' => $request->channel_id,
-                'notes' => $request->notes,
-            ]);
-
-            // 应用新渠道的余额变动
-            $newChannel = Channel::find($request->channel_id);
-            if ($newChannel) {
-                if ($transaction->type === 'income') {
-                    $newChannel->increment('rmb_balance', $request->rmb_amount);
-                    $newChannel->increment('hkd_balance', $request->hkd_amount);
-                } elseif ($transaction->type === 'outcome' || $transaction->type === 'instant_buyout') {
-                    $newChannel->decrement('rmb_balance', $request->rmb_amount);
-                    $newChannel->decrement('hkd_balance', $request->hkd_amount);
-                }
-            }
+            // 临时禁用模型事件，手动处理余额更新
+            // 因为 updating 事件会检查 settlement_status，我们需要绕过自动余额更新
+            
+            // 直接更新数据库记录，避免触发模型事件的余额逻辑
+            DB::table('transactions')
+                ->where('id', $transaction->id)
+                ->update([
+                    'rmb_amount' => $request->rmb_amount,
+                    'hkd_amount' => $request->hkd_amount,
+                    'exchange_rate' => $request->exchange_rate,
+                    'instant_rate' => $request->instant_rate,
+                    'instant_profit' => $instantProfit,
+                    'channel_id' => $request->channel_id,
+                    'notes' => $request->notes,
+                    'updated_at' => now(),
+                ]);
 
             // 如果渠道变更，更新交易计数
-            if ($oldChannelId !== $request->channel_id) {
-                if ($oldChannel) {
-                    $oldChannel->decrement('transaction_count');
-                }
-                if ($newChannel) {
-                    $newChannel->increment('transaction_count');
-                }
+            if ($oldChannelId != $request->channel_id) {
+                Channel::where('id', $oldChannelId)->decrement('transaction_count');
+                Channel::where('id', $request->channel_id)->increment('transaction_count');
             }
 
             DB::commit();
 
+            // 重新加载交易数据
+            $transaction = Transaction::with(['channel', 'user'])->find($transaction->id);
+
             return response()->json([
                 'success' => true,
                 'message' => '交易更新成功',
-                'transaction' => $transaction->fresh()->load(['channel', 'user'])
+                'transaction' => $transaction
             ]);
 
         } catch (\Exception $e) {
@@ -463,19 +444,10 @@ class TransactionController extends Controller
 
         DB::beginTransaction();
         try {
-            // 回滚渠道余额变动
-            $channel = Channel::find($transaction->channel_id);
-            if ($channel) {
-                if ($transaction->type === 'income') {
-                    $channel->decrement('rmb_balance', $transaction->rmb_amount);
-                    $channel->decrement('hkd_balance', $transaction->hkd_amount);
-                } elseif ($transaction->type === 'outcome' || $transaction->type === 'instant_buyout') {
-                    $channel->increment('rmb_balance', $transaction->rmb_amount);
-                    $channel->increment('hkd_balance', $transaction->hkd_amount);
-                }
-                $channel->decrement('transaction_count');
-            }
+            // 更新渠道交易计数
+            Channel::where('id', $transaction->channel_id)->decrement('transaction_count');
 
+            // 删除交易（模型事件会自动处理余额回滚）
             $transaction->delete();
 
             DB::commit();
