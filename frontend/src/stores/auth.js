@@ -37,6 +37,26 @@ export const useAuthStore = defineStore('auth', {
     initializeAuth() {
       console.log('[Auth] 初始化认证状态...')
       
+      // 尝试手动从localStorage读取，确保数据已加载
+      if (!this.accessToken || !this.user) {
+        try {
+          const stored = localStorage.getItem('auth')
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            // 检查是否包含必要字段
+            if (parsed.accessToken && parsed.user) {
+              console.log('[Auth] 手动恢复localStorage数据')
+              this.accessToken = parsed.accessToken
+              this.user = parsed.user
+              this.refreshToken = parsed.refreshToken || null
+              this.lastActivity = parsed.lastActivity || Date.now()
+            }
+          }
+        } catch (e) {
+          console.error('[Auth] 手动读取localStorage失败:', e)
+        }
+      }
+      
       // 如果有accessToken和user，说明是从localStorage恢复的
       if (this.accessToken && this.user) {
         console.log('[Auth] 检测到已保存的认证信息，恢复认证状态')

@@ -73,6 +73,14 @@ class Transaction extends Model
             if ($transaction->getOriginal('settlement_status') === 'settled') {
                 throw new \Exception('不能编辑已结算的交易记录。如需修改，请先撤销相关的结算记录。');
             }
+            
+            // 暂存旧数据用于 updated 事件（因为 updated 事件中 getOriginal 会返回新值）
+            $transaction->_old_data = [
+                'type' => $transaction->getOriginal('type'),
+                'channel_id' => $transaction->getOriginal('channel_id'),
+                'rmb_amount' => $transaction->getOriginal('rmb_amount'),
+                'hkd_amount' => $transaction->getOriginal('hkd_amount'),
+            ];
         });
 
         // 交易更新后处理余额变更（确保Filament后台修改也能同步余额）
@@ -305,10 +313,11 @@ class Transaction extends Model
      */
     protected static function handleBalanceUpdate($transaction)
     {
-        $oldType = $transaction->getOriginal('type');
-        $oldChannelId = $transaction->getOriginal('channel_id');
-        $oldRmb = $transaction->getOriginal('rmb_amount');
-        $oldHkd = $transaction->getOriginal('hkd_amount');
+        // 优先使用临时存储的旧数据
+        $oldType = $transaction->_old_data['type'] ?? $transaction->getOriginal('type');
+        $oldChannelId = $transaction->_old_data['channel_id'] ?? $transaction->getOriginal('channel_id');
+        $oldRmb = $transaction->_old_data['rmb_amount'] ?? $transaction->getOriginal('rmb_amount');
+        $oldHkd = $transaction->_old_data['hkd_amount'] ?? $transaction->getOriginal('hkd_amount');
 
         // 1. 回滚旧值 (针对最新余额)
         if (in_array($oldType, ['income', 'outcome'])) {
