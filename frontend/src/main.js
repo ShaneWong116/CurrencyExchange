@@ -13,6 +13,7 @@ import 'quasar/src/css/index.sass'
 // and placed in same folder as main.js
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from '@/stores/auth'
 
 // PWA注册
 import { registerSW } from 'virtual:pwa-register'
@@ -47,6 +48,12 @@ myApp.use(Quasar, {
 })
 
 myApp.use(pinia)
+
+// 在pinia初始化后、router使用前，初始化认证状态
+// 这样可以确保从localStorage恢复的token能正确设置authState
+const authStore = useAuthStore()
+authStore.initializeAuth()
+
 myApp.use(router)
 
 // 全局错误处理器

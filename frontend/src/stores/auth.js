@@ -30,6 +30,32 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    /**
+     * 初始化认证状态 - 在应用启动时调用
+     * 用于从localStorage恢复后，根据token状态设置authState
+     */
+    initializeAuth() {
+      console.log('[Auth] 初始化认证状态...')
+      
+      // 如果有accessToken和user，说明是从localStorage恢复的
+      if (this.accessToken && this.user) {
+        console.log('[Auth] 检测到已保存的认证信息，恢复认证状态')
+        this.authState = 'authenticated'
+        
+        // 设置API默认headers
+        api.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`
+        
+        // 启动自动登出检查
+        this.startAutoLogoutCheck()
+        
+        // 更新最后活动时间
+        this.lastActivity = Date.now()
+      } else {
+        console.log('[Auth] 无有效认证信息')
+        this.authState = 'unauthenticated'
+      }
+    },
+
     async login(credentials) {
       this.isLoading = true
       try {
