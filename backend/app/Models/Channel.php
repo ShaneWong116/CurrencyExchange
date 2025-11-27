@@ -70,11 +70,35 @@ class Channel extends Model
     }
 
     /**
-     * 获取RMB余额（直接读取）
+     * 获取RMB余额（动态计算）
+     * 渠道当前余额 = 渠道人民币结余（基础余额）+ 未结算入账人民币 - 未结算出账人民币
+     * 
+     * 基础余额来源：ChannelBalance 表的 initial_amount（结算后的基础余额）
      */
     public function getRmbBalance()
     {
-        return $this->getCurrentBalance('RMB');
+        // 获取渠道的基础人民币结余（从 ChannelBalance 表读取最新记录的 initial_amount）
+        $latestBalance = $this->balances()
+            ->where('currency', 'RMB')
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $baseBalance = $latestBalance ? (float) $latestBalance->initial_amount : 0.0;
+        
+        // 计算该渠道所有未结算交易的人民币净额
+        // 入账增加人民币，出账减少人民币
+        $unsettledIncome = (float) $this->transactions()
+            ->where('settlement_status', 'unsettled')
+            ->where('type', 'income')
+            ->sum('rmb_amount');
+            
+        $unsettledOutcome = (float) $this->transactions()
+            ->where('settlement_status', 'unsettled')
+            ->where('type', 'outcome')
+            ->sum('rmb_amount');
+        
+        return $baseBalance + $unsettledIncome - $unsettledOutcome;
     }
 
     /**
@@ -104,6 +128,28 @@ class Channel extends Model
         if ($balance) {
             $balance->current_balance += $delta;
             $balance->save();
+            
+            \Log::debug("Channel {$this->id} {$currency} balance adjusted", [
+                'delta' => $delta,
+                'new_balance' => $balance->current_balance,
+            ]);
+        } else {
+            // 如果没有余额记录，创建一个
+            $today = \Carbon\Carbon::today();
+            $newBalance = ChannelBalance::create([
+                'channel_id' => $this->id,
+                'currency' => $currency,
+                'date' => $today,
+                'initial_amount' => 0,
+                'income_amount' => 0,
+                'outcome_amount' => 0,
+                'current_balance' => $delta,
+            ]);
+            
+            \Log::debug("Channel {$this->id} {$currency} balance created", [
+                'delta' => $delta,
+                'new_balance' => $newBalance->current_balance,
+            ]);
         }
     }
 }

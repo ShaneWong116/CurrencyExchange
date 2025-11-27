@@ -474,21 +474,34 @@ class TransactionController extends Controller
      */
     public function balanceOverview(Request $request)
     {
-        // 计算人民币余额：各渠道人民币余额汇总
-        $totalRmb = Channel::active()
-            ->get()
-            ->sum(function ($channel) {
-                return $channel->getRmbBalance();
-            });
+        // API 版本号，用于确认代码是否更新
+        $apiVersion = '2.0.1';
+        
+        // 计算人民币余额：各渠道人民币余额汇总（动态计算）
+        $channels = Channel::active()->get();
+        $totalRmb = 0;
+        $channelDetails = [];
+        
+        foreach ($channels as $channel) {
+            $rmbBalance = $channel->getRmbBalance();
+            $totalRmb += $rmbBalance;
+            $channelDetails[] = [
+                'id' => $channel->id,
+                'name' => $channel->name,
+                'rmb_balance' => round($rmbBalance, 2),
+            ];
+        }
         
         // 获取港币余额：从系统设置中获取（与管理后台保持一致）
         $totalHkd = Setting::get('hkd_balance', 0);
         
         return response()->json([
             'success' => true,
+            'api_version' => $apiVersion,
             'data' => [
                 'total_rmb' => round($totalRmb, 2),
                 'total_hkd' => round($totalHkd, 2),
+                'channel_details' => $channelDetails,
             ],
         ]);
     }

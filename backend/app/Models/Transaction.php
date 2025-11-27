@@ -85,11 +85,20 @@ class Transaction extends Model
 
         // 交易更新后处理余额变更（确保Filament后台修改也能同步余额）
         static::updated(function ($transaction) {
+            \Log::info("Transaction {$transaction->id} updated event fired", [
+                'isUnsettled' => $transaction->isUnsettled(),
+                'original_settlement_status' => $transaction->getOriginal('settlement_status'),
+                'current_settlement_status' => $transaction->settlement_status,
+                'has_old_data' => isset($transaction->_old_data),
+            ]);
+            
             // 仅处理未结算的 income/outcome
             // 注意：如果 settlement_status 变了（比如从未结算变已结算），不应在这里处理余额（那是结算逻辑的事）
             if ($transaction->isUnsettled() && 
                 $transaction->getOriginal('settlement_status') === 'unsettled') {
                 static::handleBalanceUpdate($transaction);
+            } else {
+                \Log::info("Transaction {$transaction->id} balance update skipped - conditions not met");
             }
         });
 
@@ -309,7 +318,7 @@ class Transaction extends Model
     
     /**
      * 处理交易更新导致的余额变更
-     * 采用“先回滚旧值，再应用新值”的策略，可同时处理金额变更、类型变更和渠道变更
+     * 采用"先回滚旧值，再应用新值"的策略，可同时处理金额变更、类型变更和渠道变更
      */
     protected static function handleBalanceUpdate($transaction)
     {
@@ -319,6 +328,17 @@ class Transaction extends Model
         $oldRmb = $transaction->_old_data['rmb_amount'] ?? $transaction->getOriginal('rmb_amount');
         $oldHkd = $transaction->_old_data['hkd_amount'] ?? $transaction->getOriginal('hkd_amount');
 
+        \Log::info("Transaction {$transaction->id} balance update started", [
+            'old_type' => $oldType,
+            'old_channel_id' => $oldChannelId,
+            'old_rmb' => $oldRmb,
+            'old_hkd' => $oldHkd,
+            'new_type' => $transaction->type,
+            'new_channel_id' => $transaction->channel_id,
+            'new_rmb' => $transaction->rmb_amount,
+            'new_hkd' => $transaction->hkd_amount,
+        ]);
+
         // 1. 回滚旧值 (针对最新余额)
         if (in_array($oldType, ['income', 'outcome'])) {
             $channel = Channel::find($oldChannelId);
@@ -326,6 +346,11 @@ class Transaction extends Model
                 // 入账回滚：RMB-, HKD+; 出账回滚：RMB+, HKD-
                 $rmbDelta = ($oldType == 'income') ? -$oldRmb : $oldRmb;
                 $hkdDelta = ($oldType == 'income') ? $oldHkd : -$oldHkd;
+                
+                \Log::info("Rolling back old values for channel {$oldChannelId}", [
+                    'rmb_delta' => $rmbDelta,
+                    'hkd_delta' => $hkdDelta,
+                ]);
                 
                 $channel->adjustLatestBalance('RMB', $rmbDelta);
                 $channel->adjustLatestBalance('HKD', $hkdDelta);
@@ -340,10 +365,17 @@ class Transaction extends Model
                 $rmbDelta = ($transaction->type == 'income') ? $transaction->rmb_amount : -$transaction->rmb_amount;
                 $hkdDelta = ($transaction->type == 'income') ? -$transaction->hkd_amount : $transaction->hkd_amount;
                 
+                \Log::info("Applying new values for channel {$transaction->channel_id}", [
+                    'rmb_delta' => $rmbDelta,
+                    'hkd_delta' => $hkdDelta,
+                ]);
+                
                 $channel->adjustLatestBalance('RMB', $rmbDelta);
                 $channel->adjustLatestBalance('HKD', $hkdDelta);
              }
         }
+        
+        \Log::info("Transaction {$transaction->id} balance update completed");
     }
 
     /**
