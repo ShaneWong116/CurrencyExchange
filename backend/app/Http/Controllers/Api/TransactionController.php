@@ -407,16 +407,20 @@ class TransactionController extends Controller
                 'transaction_id' => $transaction->id,
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $message = app()->environment('production') 
-                ? '更新失败，请稍后重试' 
-                : $e->getMessage();
-            
+            // 始终返回详细错误信息以便调试
             return response()->json([
-                'message' => $message,
-                'error_code' => 'TRANSACTION_UPDATE_FAILED'
+                'message' => '更新失败，请稍后重试',
+                'error_code' => 'TRANSACTION_UPDATE_FAILED',
+                'debug' => [
+                    'error' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine(),
+                ]
             ], 500);
         }
     }
@@ -475,7 +479,7 @@ class TransactionController extends Controller
     public function balanceOverview(Request $request)
     {
         // API 版本号，用于确认代码是否更新
-        $apiVersion = '2.0.1';
+        $apiVersion = '2.0.2';
         
         // 计算人民币余额：各渠道人民币余额汇总（动态计算）
         $channels = Channel::active()->get();
