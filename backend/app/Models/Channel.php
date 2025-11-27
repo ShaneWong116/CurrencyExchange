@@ -84,4 +84,26 @@ class Channel extends Model
     {
         return $this->getCurrentBalance('HKD');
     }
+
+    /**
+     * 调整指定货币的最新余额
+     * 
+     * @param string $currency 货币类型 (RMB/HKD)
+     * @param float $delta 变动金额（正增负减）
+     */
+    public function adjustLatestBalance($currency, $delta)
+    {
+        if ($delta == 0) return;
+
+        $balance = $this->balances()
+            ->where('currency', $currency)
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($balance) {
+            $balance->current_balance += $delta;
+            $balance->save();
+        }
+    }
 }

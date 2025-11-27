@@ -75,6 +75,16 @@ class Transaction extends Model
             }
         });
 
+        // 交易更新后处理余额变更（确保Filament后台修改也能同步余额）
+        static::updated(function ($transaction) {
+            // 仅处理未结算的 income/outcome
+            // 注意：如果 settlement_status 变了（比如从未结算变已结算），不应在这里处理余额（那是结算逻辑的事）
+            if ($transaction->isUnsettled() && 
+                $transaction->getOriginal('settlement_status') === 'unsettled') {
+                static::handleBalanceUpdate($transaction);
+            }
+        });
+
         // 删除前检查：禁止删除已结算的交易
         static::deleting(function ($transaction) {
             if ($transaction->isSettled()) {
@@ -290,6 +300,44 @@ class Transaction extends Model
     }
     
     /**
+     * 处理交易更新导致的余额变更
+     * 采用“先回滚旧值，再应用新值”的策略，可同时处理金额变更、类型变更和渠道变更
+     */
+    protected static function handleBalanceUpdate($transaction)
+    {
+        $oldType = $transaction->getOriginal('type');
+        $oldChannelId = $transaction->getOriginal('channel_id');
+        $oldRmb = $transaction->getOriginal('rmb_amount');
+        $oldHkd = $transaction->getOriginal('hkd_amount');
+
+        // 1. 回滚旧值 (针对最新余额)
+        if (in_array($oldType, ['income', 'outcome'])) {
+            $channel = Channel::find($oldChannelId);
+            if ($channel) {
+                // 入账回滚：RMB-, HKD+; 出账回滚：RMB+, HKD-
+                $rmbDelta = ($oldType == 'income') ? -$oldRmb : $oldRmb;
+                $hkdDelta = ($oldType == 'income') ? $oldHkd : -$oldHkd;
+                
+                $channel->adjustLatestBalance('RMB', $rmbDelta);
+                $channel->adjustLatestBalance('HKD', $hkdDelta);
+            }
+        }
+
+        // 2. 应用新值 (针对最新余额)
+        if (in_array($transaction->type, ['income', 'outcome'])) {
+             $channel = Channel::find($transaction->channel_id);
+             if ($channel) {
+                // 入账：RMB+, HKD-; 出账：RMB-, HKD+
+                $rmbDelta = ($transaction->type == 'income') ? $transaction->rmb_amount : -$transaction->rmb_amount;
+                $hkdDelta = ($transaction->type == 'income') ? -$transaction->hkd_amount : $transaction->hkd_amount;
+                
+                $channel->adjustLatestBalance('RMB', $rmbDelta);
+                $channel->adjustLatestBalance('HKD', $hkdDelta);
+             }
+        }
+    }
+
+    /**
      * 回滚渠道余额（删除交易时调用）
      * 对updateChannelBalance的反向操作
      */
@@ -298,7 +346,7 @@ class Transaction extends Model
         // 获取交易创建日期（而不是今天）
         $transactionDate = Carbon::parse($transaction->created_at)->startOfDay();
         
-        // 处理 RMB 余额回滚
+        // 处理 RMB 余额回滚 (历史记录)
         static::revertCurrencyBalance(
             $transaction->channel_id, 
             'RMB', 
@@ -307,7 +355,7 @@ class Transaction extends Model
             $transaction->rmb_amount
         );
         
-        // 处理 HKD 余额回滚
+        // 处理 HKD 余额回滚 (历史记录)
         static::revertCurrencyBalance(
             $transaction->channel_id, 
             'HKD', 
@@ -315,6 +363,25 @@ class Transaction extends Model
             $transaction->type, 
             $transaction->hkd_amount
         );
+
+        // 处理最新余额回滚 (如果交易不是今天的，历史记录回滚不会影响最新余额，所以需要额外处理)
+        // 检查该渠道最新余额记录的日期
+        $latestRmbDate = ChannelBalance::where('channel_id', $transaction->channel_id)
+             ->where('currency', 'RMB')
+             ->orderBy('date', 'desc')
+             ->value('date');
+             
+        if ($latestRmbDate && $transactionDate->lt(Carbon::parse($latestRmbDate))) {
+             $channel = $transaction->channel;
+             if ($channel) {
+                // 入账回滚：RMB-, HKD+
+                $rmbDelta = ($transaction->type == 'income') ? -$transaction->rmb_amount : $transaction->rmb_amount;
+                $hkdDelta = ($transaction->type == 'income') ? $transaction->hkd_amount : -$transaction->hkd_amount;
+                
+                $channel->adjustLatestBalance('RMB', $rmbDelta);
+                $channel->adjustLatestBalance('HKD', $hkdDelta);
+             }
+        }
     }
     
     /**

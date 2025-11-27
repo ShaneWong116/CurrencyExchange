@@ -372,22 +372,16 @@ class TransactionController extends Controller
                 );
             }
 
-            // 临时禁用模型事件，手动处理余额更新
-            // 因为 updating 事件会检查 settlement_status，我们需要绕过自动余额更新
-            
-            // 直接更新数据库记录，避免触发模型事件的余额逻辑
-            DB::table('transactions')
-                ->where('id', $transaction->id)
-                ->update([
-                    'rmb_amount' => $request->rmb_amount,
-                    'hkd_amount' => $request->hkd_amount,
-                    'exchange_rate' => $request->exchange_rate,
-                    'instant_rate' => $request->instant_rate,
-                    'instant_profit' => $instantProfit,
-                    'channel_id' => $request->channel_id,
-                    'notes' => $request->notes,
-                    'updated_at' => now(),
-                ]);
+            // 使用模型 update 方法以触发事件（处理余额变更）
+            $transaction->update([
+                'rmb_amount' => $request->rmb_amount,
+                'hkd_amount' => $request->hkd_amount,
+                'exchange_rate' => $request->exchange_rate,
+                'instant_rate' => $request->instant_rate,
+                'instant_profit' => $instantProfit,
+                'channel_id' => $request->channel_id,
+                'notes' => $request->notes,
+            ]);
 
             // 如果渠道变更，更新交易计数
             if ($oldChannelId != $request->channel_id) {
@@ -447,8 +441,8 @@ class TransactionController extends Controller
             // 更新渠道交易计数
             Channel::where('id', $transaction->channel_id)->decrement('transaction_count');
 
-            // 直接删除数据库记录，避免模型事件可能的错误
-            DB::table('transactions')->where('id', $transaction->id)->delete();
+            // 使用模型 delete 方法以触发事件（处理余额回滚）
+            $transaction->delete();
 
             DB::commit();
 
