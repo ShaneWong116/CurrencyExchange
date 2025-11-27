@@ -447,8 +447,8 @@ class TransactionController extends Controller
             // 更新渠道交易计数
             Channel::where('id', $transaction->channel_id)->decrement('transaction_count');
 
-            // 删除交易（模型事件会自动处理余额回滚）
-            $transaction->delete();
+            // 直接删除数据库记录，避免模型事件可能的错误
+            DB::table('transactions')->where('id', $transaction->id)->delete();
 
             DB::commit();
 
@@ -463,7 +463,8 @@ class TransactionController extends Controller
             \Log::error('Transaction delete failed', [
                 'transaction_id' => $transaction->id,
                 'user_id' => $request->user()->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([

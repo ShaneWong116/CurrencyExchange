@@ -372,6 +372,7 @@
               dense
               prefix="¥"
               :rules="[val => val > 0 || '金额必须大于0']"
+              @update:model-value="calculateExchangeRate"
             />
 
             <!-- 港币金额 -->
@@ -383,16 +384,19 @@
               dense
               prefix="HK$"
               :rules="[val => val > 0 || '金额必须大于0']"
+              @update:model-value="calculateExchangeRate"
             />
 
-            <!-- 汇率 -->
+            <!-- 汇率（自动计算，只读） -->
             <q-input
               v-model.number="editForm.exchange_rate"
               type="number"
               step="0.001"
-              label="汇率"
+              label="汇率（自动计算）"
               outlined
               dense
+              readonly
+              bg-color="grey-2"
               :rules="[val => val > 0 || '汇率必须大于0']"
             />
 
@@ -844,6 +848,12 @@ export default {
         notes: transaction.notes || ''
       }
       this.showEditDialog = true
+    },
+    // 计算汇率：人民币 / 港币
+    calculateExchangeRate() {
+      if (this.editForm.rmb_amount > 0 && this.editForm.hkd_amount > 0) {
+        this.editForm.exchange_rate = Number((this.editForm.rmb_amount / this.editForm.hkd_amount).toFixed(5))
+      }
     },
     // 关闭编辑对话框
     closeEditDialog() {
