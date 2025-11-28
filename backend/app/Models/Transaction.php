@@ -11,6 +11,11 @@ use Carbon\Carbon;
 class Transaction extends Model
 {
     use HasFactory;
+    
+    /**
+     * 临时存储更新前的旧数据（用于 updated 事件中计算余额变更）
+     */
+    protected static $pendingOldData = [];
 
     protected $fillable = [
         'uuid',
@@ -74,8 +79,8 @@ class Transaction extends Model
                 throw new \Exception('不能编辑已结算的交易记录。如需修改，请先撤销相关的结算记录。');
             }
             
-            // 暂存旧数据用于 updated 事件（因为 updated 事件中 getOriginal 会返回新值）
-            $transaction->_old_data = [
+            // 暂存旧数据用于 updated 事件（使用静态属性确保数据不丢失）
+            static::$pendingOldData[$transaction->id] = [
                 'type' => $transaction->getOriginal('type'),
                 'channel_id' => $transaction->getOriginal('channel_id'),
                 'rmb_amount' => $transaction->getOriginal('rmb_amount'),
@@ -85,21 +90,23 @@ class Transaction extends Model
 
         // 交易更新后处理余额变更（确保Filament后台修改也能同步余额）
         static::updated(function ($transaction) {
+            $hasOldData = isset(static::$pendingOldData[$transaction->id]);
+            
             \Log::info("Transaction {$transaction->id} updated event fired", [
                 'isUnsettled' => $transaction->isUnsettled(),
-                'original_settlement_status' => $transaction->getOriginal('settlement_status'),
                 'current_settlement_status' => $transaction->settlement_status,
-                'has_old_data' => isset($transaction->_old_data),
+                'has_old_data' => $hasOldData,
             ]);
             
             // 仅处理未结算的 income/outcome
-            // 注意：如果 settlement_status 变了（比如从未结算变已结算），不应在这里处理余额（那是结算逻辑的事）
-            if ($transaction->isUnsettled() && 
-                $transaction->getOriginal('settlement_status') === 'unsettled') {
+            if ($transaction->isUnsettled() && $hasOldData) {
                 static::handleBalanceUpdate($transaction);
             } else {
                 \Log::info("Transaction {$transaction->id} balance update skipped - conditions not met");
             }
+            
+            // 清理临时数据
+            unset(static::$pendingOldData[$transaction->id]);
         });
 
         // 删除前检查：禁止删除已结算的交易
@@ -322,11 +329,18 @@ class Transaction extends Model
      */
     protected static function handleBalanceUpdate($transaction)
     {
-        // 优先使用临时存储的旧数据
-        $oldType = $transaction->_old_data['type'] ?? $transaction->getOriginal('type');
-        $oldChannelId = $transaction->_old_data['channel_id'] ?? $transaction->getOriginal('channel_id');
-        $oldRmb = $transaction->_old_data['rmb_amount'] ?? $transaction->getOriginal('rmb_amount');
-        $oldHkd = $transaction->_old_data['hkd_amount'] ?? $transaction->getOriginal('hkd_amount');
+        // 从静态属性获取旧数据
+        $oldData = static::$pendingOldData[$transaction->id] ?? null;
+        
+        if (!$oldData) {
+            \Log::warning("Transaction {$transaction->id} balance update skipped - no old data found");
+            return;
+        }
+        
+        $oldType = $oldData['type'];
+        $oldChannelId = $oldData['channel_id'];
+        $oldRmb = $oldData['rmb_amount'];
+        $oldHkd = $oldData['hkd_amount'];
 
         \Log::info("Transaction {$transaction->id} balance update started", [
             'old_type' => $oldType,
