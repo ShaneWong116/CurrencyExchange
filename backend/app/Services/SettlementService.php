@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Channel;
 use App\Models\Setting;
 use App\Models\BalanceAdjustment;
+use App\Models\ChannelBalance;
 use App\Models\CurrentStatistic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -341,17 +342,40 @@ class SettlementService
                 }
             }
             
-            // 12. 更新所有未结余的交易状态
+            // 12. 固化各渠道人民币余额到 ChannelBalance 的 initial_amount
+            // 这一步必须在标记交易为已结算之前执行，因为 getRmbBalance() 依赖未结算交易
+            $today = Carbon::today();
+            foreach ($preview['channel_rmb_balances'] as $channelBalance) {
+                $balance = ChannelBalance::firstOrCreate([
+                    'channel_id' => $channelBalance['id'],
+                    'currency' => 'RMB',
+                    'date' => $today,
+                ], [
+                    'initial_amount' => 0,
+                    'income_amount' => 0,
+                    'outcome_amount' => 0,
+                    'current_balance' => 0,
+                ]);
+                
+                // 将当前余额固化为新的基础余额
+                $balance->initial_amount = $channelBalance['rmb_balance'];
+                $balance->current_balance = $channelBalance['rmb_balance'];
+                $balance->save();
+                
+                Log::info("Settlement: Channel {$channelBalance['id']} RMB balance fixed to {$channelBalance['rmb_balance']}");
+            }
+            
+            // 13. 更新所有未结余的交易状态
             Transaction::unsettled()->update([
                 'settlement_status' => 'settled',
                 'settlement_id' => $settlement->id,
                 'settlement_date' => $settlement->settlement_date,
             ]);
             
-            // 13. 清空当前统计表(因为所有交易都已结算)
+            // 14. 清空当前统计表(因为所有交易都已结算)
             CurrentStatistic::clearAll();
             
-            // 14. 创建本金调整记录（结算类型）
+            // 15. 创建本金调整记录（结算类型）
             BalanceAdjustment::createCapitalAdjustment(
                 $newCapital,
                 'settlement',
@@ -365,7 +389,7 @@ class SettlementService
                 $userId
             );
             
-            // 15. 创建港币余额调整记录（结算类型）
+            // 16. 创建港币余额调整记录（结算类型）
             BalanceAdjustment::createHkdBalanceAdjustment(
                 afterAmount: $newHkdBalance,
                 adjustmentType: 'settlement',
