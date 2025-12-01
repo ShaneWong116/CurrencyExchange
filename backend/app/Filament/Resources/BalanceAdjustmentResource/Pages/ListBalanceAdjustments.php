@@ -21,6 +21,13 @@ class ListBalanceAdjustments extends ListRecords
 {
     protected static string $resource = BalanceAdjustmentResource::class;
     
+    public ?string $activeTab = 'channel';
+    
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'channel';
+    }
+    
     public function getTabs(): array
     {
         return [
@@ -144,7 +151,8 @@ class ListBalanceAdjustments extends ListRecords
                         ->url(fn (Channel $record): string => BalanceAdjustmentResource\Pages\ViewChannelBalance::getUrl(['channel' => $record->id])),
                 ])
                 ->recordUrl(fn (Channel $record): string => BalanceAdjustmentResource\Pages\ViewChannelBalance::getUrl(['channel' => $record->id]))
-                ->defaultSort('id', 'asc');
+                ->defaultSort('id', 'asc')
+                ->queryStringIdentifier('channels');
         }
         
         // 其他标签页使用默认的资源表格
