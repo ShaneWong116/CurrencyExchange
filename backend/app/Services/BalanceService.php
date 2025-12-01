@@ -220,10 +220,11 @@ class BalanceService
     
     /**
      * 获取所有渠道当前余额总览
+     * 注意：需要统计所有渠道（包括停用的），因为停用渠道可能仍有余额
      */
     public function getAllChannelsBalanceOverview(): array
     {
-        $channels = Channel::active()->get();
+        $channels = Channel::all();
         $overview = [
             'total_rmb' => 0,
             'total_hkd' => 0,

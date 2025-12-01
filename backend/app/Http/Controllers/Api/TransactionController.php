@@ -482,7 +482,8 @@ class TransactionController extends Controller
         $apiVersion = '2.0.2';
         
         // 计算人民币余额：各渠道人民币余额汇总（动态计算）
-        $channels = Channel::active()->get();
+        // 注意：需要统计所有渠道（包括停用的），因为停用渠道可能仍有余额
+        $channels = Channel::all();
         $totalRmb = 0;
         $channelDetails = [];
         

@@ -48,8 +48,8 @@ class BalanceOverview extends BaseWidget
         $hkdBalance = BalanceAdjustment::getCurrentHkdBalance();
         
         // 计算人民币余额：各渠道人民币余额汇总
-        $rmbBalance = Channel::where('status', 'active')
-            ->get()
+        // 注意：需要统计所有渠道（包括停用的），因为停用渠道可能仍有余额
+        $rmbBalance = Channel::all()
             ->sum(function ($channel) {
                 return $channel->getRmbBalance();
             });
