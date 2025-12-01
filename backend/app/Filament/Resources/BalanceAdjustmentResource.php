@@ -121,20 +121,6 @@ class BalanceAdjustmentResource extends Resource
                                     }
                                 }
                             }),
-                            
-                        Forms\Components\TextInput::make('rmb_current_balance')
-                            ->label('当前人民币余额')
-                            ->prefix('¥')
-                            ->numeric()
-                            ->disabled()
-                            ->visible(fn (Forms\Get $get) => $get('currency') === 'RMB'),
-                            
-                        Forms\Components\TextInput::make('hkd_current_balance')
-                            ->label('当前港币余额')
-                            ->prefix('HK$')
-                            ->numeric()
-                            ->disabled()
-                            ->visible(fn (Forms\Get $get) => $get('currency') === 'HKD'),
                     ])
                     ->columns(2)
                     ->visible(fn (Forms\Get $get) => $get('adjustment_category') === 'channel'),
