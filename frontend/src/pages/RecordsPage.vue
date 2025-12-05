@@ -13,22 +13,19 @@
 
     <!-- Summary Section -->
     <section class="summary-section">
-      <div class="summary-card compact">
-        <!-- 余额信息 -->
-        <div class="balance-row">
-          <div class="balance-item">
-            <span class="balance-label">人民币</span>
-            <span class="balance-value cny">¥{{ formatAmount(balanceOverview.total_rmb) }}</span>
+      <div class="summary-card">
+        <div class="summary-details">
+          <div class="detail-row">
+            <div class="detail-label">人民币余额</div>
+            <div class="detail-value">¥{{ formatAmount(balanceOverview.total_rmb) }}</div>
           </div>
-          <div class="balance-divider"></div>
-          <div class="balance-item">
-            <span class="balance-label">港币</span>
-            <span class="balance-value hkd">HK${{ formatAmount(balanceOverview.total_hkd) }}</span>
+          <div class="detail-row">
+            <div class="detail-label">港币余额</div>
+            <div class="detail-value">HK${{ formatAmount(balanceOverview.total_hkd) }}</div>
           </div>
-          <div class="balance-divider"></div>
-          <div class="balance-item">
-            <span class="balance-label">交易数</span>
-            <span class="balance-value count">{{ getCurrentCount() }}笔</span>
+          <div class="detail-row">
+            <div class="detail-label">交易数</div>
+            <div class="detail-value">{{ getCurrentCount() }}笔</div>
           </div>
         </div>
         <!-- 筛选汇总（仅入账/出账时显示） -->
@@ -1110,64 +1107,44 @@ export default {
 
 /* Summary Section */
 .summary-section {
-  padding: 12px 16px;
+  padding: 16px;
   background: #f5f5f5;
 }
 
-.summary-card.compact {
+.summary-card {
   background: #fff;
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* 余额横向布局 */
-.balance-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.balance-item {
+.summary-details {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  flex: 1;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
 }
 
-.balance-label {
-  font-size: 11px;
-  color: #999;
-  margin-bottom: 2px;
-}
-
-.balance-value {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.balance-value.cny {
-  color: #d32f2f;
-}
-
-.balance-value.hkd {
-  color: #1976d2;
-}
-
-.balance-value.count {
-  color: #333;
-}
-
-.balance-divider {
-  width: 1px;
-  height: 28px;
-  background: #e0e0e0;
+.detail-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.12);
+  border-color: #e3f2fd;
 }
 
 /* 筛选汇总 */
 .filter-summary {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px dashed #e0e0e0;
 }
 
@@ -1176,7 +1153,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 8px;
 }
 
@@ -1189,19 +1166,19 @@ export default {
 }
 
 .filter-type-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #666;
 }
 
 .filter-amount-cny {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #e65100;
 }
 
 .filter-amount-hkd {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #1565c0;
 }
