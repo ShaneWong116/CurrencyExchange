@@ -155,6 +155,25 @@
           </div>
         </template>
       </q-infinite-scroll>
+
+      <!-- 手动加载更多按钮 -->
+      <div class="load-more-section" v-if="hasMore && transactions.length > 0">
+        <q-btn 
+          flat 
+          color="primary" 
+          :loading="loading"
+          @click="manualLoadMore"
+          class="load-more-btn"
+        >
+          <q-icon name="expand_more" class="q-mr-xs" />
+          加载更多 ({{ transactions.length }}/{{ totalCount }})
+        </q-btn>
+      </div>
+
+      <!-- 已加载全部 -->
+      <div class="load-more-section" v-if="!hasMore && transactions.length > 0">
+        <span class="all-loaded-text">已加载全部 {{ transactions.length }} 条记录</span>
+      </div>
     </section>
 
     <!-- 回到顶部按钮 -->
@@ -491,6 +510,7 @@ export default {
       transactions: [],
       page: 1,
       hasMore: true,
+      totalCount: 0,
       loading: false,
       filterType: 'all',
       // 结算相关
@@ -686,6 +706,7 @@ export default {
         const data = res.data?.data || res.data
         const list = (data?.data || data || [])
         this.hasMore = !!data?.next_page_url
+        this.totalCount = data?.total || 0
         this.transactions = reset ? list : [...this.transactions, ...list]
       } catch (error) {
         console.error('Failed to fetch transactions:', error)
@@ -732,6 +753,12 @@ export default {
       this.page += 1
       await this.fetchTransactions(false)
       done(!this.hasMore) // 如果没有更多数据，传 true 停止
+    },
+    // 手动加载更多
+    async manualLoadMore() {
+      if (!this.hasMore || this.loading) return
+      this.page += 1
+      await this.fetchTransactions(false)
     },
     // 滚动事件处理
     handleScroll() {
@@ -1143,16 +1170,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-radius: 8px;
-}
-
-.filter-summary-content.income {
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-}
-
-.filter-summary-content.outcome {
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  padding: 8px 0;
 }
 
 .filter-type-label {
@@ -1171,6 +1189,22 @@ export default {
   font-size: 15px;
   font-weight: 600;
   color: #1565c0;
+}
+
+/* 加载更多按钮 */
+.load-more-section {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.load-more-btn {
+  font-size: 14px;
+}
+
+.all-loaded-text {
+  font-size: 13px;
+  color: #999;
 }
 
 .detail-label {
