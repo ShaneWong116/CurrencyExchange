@@ -135,18 +135,23 @@ class SettlementService
         $unsettledIncomeRmb = $unsettledIncomeTransactions->sum('rmb_amount');
         $unsettledIncomeHkd = $unsettledIncomeTransactions->sum('hkd_amount');
 
-        // 4. 计算当前结余汇率
-        // 修正说明:渠道余额汇总已经包含了出账的影响(入账-出账)
-        // 但结余汇率应该只基于未结余的入账交易,不应该受出账影响
-        // 正确计算:只使用未结余的入账交易
+        // 4. 计算当前结余汇率（成本汇率）
+        // 公式：(期初人民币结余 + 当日入账人民币值) ÷ (期初港币结余 + 当日入账港币值)
         
-        // 人民币总量 = 未结余入账人民币金额之和
-        $rmbTotal = $unsettledIncomeRmb;
+        // 获取期初人民币结余（上一次结余后的人民币余额）
+        $lastSettlement = Settlement::orderBy('id', 'desc')->first();
+        $previousRmbBalance = $lastSettlement ? (float) $lastSettlement->rmb_balance_total : 0;
         
-        // 港币总量 = 未结余入账港币金额之和  
-        $hkdTotal = $unsettledIncomeHkd;
+        // 期初港币结余
+        $previousHkdBalance = $currentHkdBalance;
         
-        // 当前结余汇率 = 人民币总量 ÷ 港币总量（保留3位小数）
+        // 人民币总量 = 期初人民币结余 + 未结余入账人民币金额之和
+        $rmbTotal = $previousRmbBalance + $unsettledIncomeRmb;
+        
+        // 港币总量 = 期初港币结余 + 未结余入账港币金额之和
+        $hkdTotal = $previousHkdBalance + $unsettledIncomeHkd;
+        
+        // 当前结余汇率（成本汇率）= 人民币总量 ÷ 港币总量（保留3位小数）
         $settlementRate = $hkdTotal > 0 ? round($rmbTotal / $hkdTotal, 3, PHP_ROUND_HALF_UP) : 0;
 
         // 5. 计算出账利润
@@ -213,6 +218,12 @@ class SettlementService
             'current_hkd_balance' => $currentHkdBalance,
             'rmb_balance_total' => round($rmbBalanceTotal, 2),
             'settlement_rate' => $settlementRate,
+            
+            // 成本汇率计算明细（用于核对）
+            'previous_rmb_balance' => round($previousRmbBalance, 2),  // 期初人民币结余
+            'previous_hkd_balance' => round($previousHkdBalance, 2),  // 期初港币结余
+            'cost_rmb_total' => round($rmbTotal, 2),  // 人民币总量 = 期初 + 入账
+            'cost_hkd_total' => round($hkdTotal, 2),  // 港币总量 = 期初 + 入账
             
             // 利润明细
             'outgoing_profit' => $outgoingProfit,

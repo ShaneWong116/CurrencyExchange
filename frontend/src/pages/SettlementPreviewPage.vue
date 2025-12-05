@@ -118,10 +118,50 @@
                     <q-item-label class="text-weight-bold">{{ formatInteger(preview.total_profit) }} HKD</q-item-label>
                   </q-item-section>
                 </q-item>
+                <q-separator class="q-my-sm" />
+                
+                <!-- 成本汇率计算明细 -->
+                <q-item-label header class="text-weight-bold text-grey-8">成本汇率计算</q-item-label>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>期初人民币结余</q-item-label>
+                    <q-item-label>{{ formatCurrency(preview.previous_rmb_balance) }} CNY</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>+ 当日入账人民币</q-item-label>
+                    <q-item-label>{{ formatCurrency(preview.unsettled_income_rmb) }} CNY</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>= 人民币总量</q-item-label>
+                    <q-item-label class="text-weight-bold">{{ formatCurrency(preview.cost_rmb_total) }} CNY</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>期初港币结余</q-item-label>
+                    <q-item-label>{{ formatCurrency(preview.previous_hkd_balance) }} HKD</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>+ 当日入账港币</q-item-label>
+                    <q-item-label>{{ formatCurrency(preview.unsettled_income_hkd) }} HKD</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item dense>
+                  <q-item-section>
+                    <q-item-label caption>= 港币总量</q-item-label>
+                    <q-item-label class="text-weight-bold">{{ formatCurrency(preview.cost_hkd_total) }} HKD</q-item-label>
+                  </q-item-section>
+                </q-item>
                 <q-item>
                   <q-item-section>
-                    <q-item-label caption>结余汇率</q-item-label>
-                    <q-item-label>{{ formatRate(preview.settlement_rate) }}</q-item-label>
+                    <q-item-label caption>成本汇率 = 人民币总量 ÷ 港币总量</q-item-label>
+                    <q-item-label class="text-h6 text-weight-bold text-primary">{{ formatRate(preview.settlement_rate) }}</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item v-if="preview.needs_instant_rate">
@@ -368,6 +408,13 @@ const preview = ref({
   instant_profit: 0,
   settlement_rate: 0,
   needs_instant_rate: false,
+  // 成本汇率计算明细
+  previous_rmb_balance: 0,
+  previous_hkd_balance: 0,
+  cost_rmb_total: 0,
+  cost_hkd_total: 0,
+  unsettled_income_rmb: 0,
+  unsettled_income_hkd: 0,
 })
 const showChannelRmbBalances = ref(false)
 const instantBuyoutRate = ref(null)
