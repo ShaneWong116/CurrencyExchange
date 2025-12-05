@@ -93,8 +93,10 @@
       <q-infinite-scroll 
         class="transaction-list"
         @load="loadMore" 
-        :offset="100"
+        :offset="250"
+        :disable="!hasMore"
         ref="infiniteScroll"
+        :scroll-target="scrollTarget"
       >
         <div v-for="t in filteredTransactions" :key="t.id" class="transaction-item" @click="openEditDialog(t)">
           <div class="transaction-icon" :class="getIconClass(t.type)">
@@ -515,7 +517,9 @@ export default {
       isSubmittingEdit: false,
       isDeleting: false,
       // 回到顶部
-      showBackToTop: false
+      showBackToTop: false,
+      // 无限滚动目标
+      scrollTarget: null
     }
   },
   computed: {
@@ -527,6 +531,10 @@ export default {
   mounted() {
     // 监听滚动事件
     window.addEventListener('scroll', this.handleScroll)
+    // 设置无限滚动的目标为页面滚动容器
+    this.$nextTick(() => {
+      this.scrollTarget = document.querySelector('.q-page-container') || document.body
+    })
   },
   beforeUnmount() {
     window.removeEventListener('scroll', this.handleScroll)
@@ -697,15 +705,8 @@ export default {
       this.hasMore = true
       this.transactions = []
       await this.fetchTransactions(true)
-      // 数据加载完成后重置无限滚动状态
-      this.$nextTick(() => {
-        if (this.$refs.infiniteScroll) {
-          this.$refs.infiniteScroll.reset()
-          this.$refs.infiniteScroll.resume()
-          // 触发一次滚动检测
-          this.$refs.infiniteScroll.poll()
-        }
-      })
+      // 重置无限滚动
+      this.$refs.infiniteScroll?.reset()
     },
     async refreshTransactions() {
       this.page = 1
@@ -716,13 +717,7 @@ export default {
         this.fetchTransactions(true)
       ])
       // 重置无限滚动
-      this.$nextTick(() => {
-        if (this.$refs.infiniteScroll) {
-          this.$refs.infiniteScroll.reset()
-          this.$refs.infiniteScroll.resume()
-          this.$refs.infiniteScroll.poll()
-        }
-      })
+      this.$refs.infiniteScroll?.reset()
       this.$q.notify({
         type: 'positive',
         message: '刷新成功',
@@ -730,18 +725,13 @@ export default {
       })
     },
     async loadMore(index, done) {
+      console.log('[InfiniteScroll] loadMore called, page:', this.page, 'hasMore:', this.hasMore)
       if (!this.hasMore) {
-        // 停止无限滚动
-        this.$refs.infiniteScroll?.stop()
-        return done()
+        return done(true) // true 表示停止
       }
       this.page += 1
       await this.fetchTransactions(false)
-      // 如果没有更多数据，停止无限滚动
-      if (!this.hasMore) {
-        this.$refs.infiniteScroll?.stop()
-      }
-      done()
+      done(!this.hasMore) // 如果没有更多数据，传 true 停止
     },
     // 滚动事件处理
     handleScroll() {
