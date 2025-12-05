@@ -37,28 +37,28 @@
         <div 
           class="tab-item" 
           :class="{ active: filterType === 'all' }"
-          @click="filterType = 'all'"
+          @click="changeFilter('all')"
         >
           全部
         </div>
         <div 
           class="tab-item" 
           :class="{ active: filterType === 'income' }"
-          @click="filterType = 'income'"
+          @click="changeFilter('income')"
         >
           入账
         </div>
         <div 
           class="tab-item" 
           :class="{ active: filterType === 'outcome' }"
-          @click="filterType = 'outcome'"
+          @click="changeFilter('outcome')"
         >
           出账
         </div>
         <div 
           class="tab-item" 
           :class="{ active: filterType === 'instant_buyout' }"
-          @click="filterType = 'instant_buyout'"
+          @click="changeFilter('instant_buyout')"
         >
           即时买断
         </div>
@@ -87,7 +87,12 @@
         </div>
       </div>
 
-      <div class="transaction-list">
+      <q-infinite-scroll 
+        class="transaction-list"
+        @load="loadMore" 
+        :offset="100"
+        ref="infiniteScroll"
+      >
         <div v-for="t in filteredTransactions" :key="t.id" class="transaction-item" @click="openEditDialog(t)">
           <div class="transaction-icon" :class="getIconClass(t.type)">
             <q-icon :name="getTypeIcon(t.type)" size="20px" color="white" />
@@ -138,21 +143,26 @@
           <div class="empty-text">暂无交易记录</div>
         </div>
 
-        <!-- Infinite Scroll -->
-        <q-infinite-scroll 
-          v-if="hasMore && transactions.length > 0" 
-          @load="loadMore" 
-          :offset="100"
-        >
-          <template v-slot:loading>
-            <div class="loading-more">
-              <q-spinner color="primary" size="20px" />
-              <span class="loading-more-text">加载更多...</span>
-            </div>
-          </template>
-        </q-infinite-scroll>
-      </div>
+        <template v-slot:loading>
+          <div class="loading-more">
+            <q-spinner color="primary" size="20px" />
+            <span class="loading-more-text">加载更多...</span>
+          </div>
+        </template>
+      </q-infinite-scroll>
     </section>
+
+    <!-- 回到顶部按钮 -->
+    <transition name="fade">
+      <q-btn
+        v-show="showBackToTop"
+        fab
+        icon="keyboard_arrow_up"
+        color="primary"
+        class="back-to-top-btn"
+        @click="scrollToTop"
+      />
+    </transition>
 
     <!-- 结算对话框 -->
     <q-dialog v-model="showSettlementDialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
@@ -500,16 +510,23 @@ export default {
       },
       channelOptions: [],
       isSubmittingEdit: false,
-      isDeleting: false
+      isDeleting: false,
+      // 回到顶部
+      showBackToTop: false
     }
   },
   computed: {
+    // 不再需要前端过滤，直接返回后端数据
     filteredTransactions() {
-      if (this.filterType === 'all') {
-        return this.transactions
-      }
-      return this.transactions.filter(t => t.type === this.filterType)
+      return this.transactions
     }
+  },
+  mounted() {
+    // 监听滚动事件
+    window.addEventListener('scroll', this.handleScroll)
+  },
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.handleScroll)
   },
   async created() {
     const auth = useAuthStore()
@@ -648,6 +665,10 @@ export default {
         page: this.page,
         settlement_status: 'unsettled' // 只查询未结余的记录
       }
+      // 如果选择了特定类型，添加 type 参数
+      if (this.filterType !== 'all') {
+        params.type = this.filterType
+      }
       this.loading = true
       try {
         const res = await api.get('/transactions', { params })
@@ -665,9 +686,21 @@ export default {
         this.loading = false
       }
     },
+    // 切换筛选类型
+    async changeFilter(type) {
+      if (this.filterType === type) return
+      this.filterType = type
+      this.page = 1
+      this.hasMore = true
+      this.transactions = []
+      this.$refs.infiniteScroll?.reset()
+      await this.fetchTransactions(true)
+    },
     async refreshTransactions() {
       this.page = 1
       this.hasMore = true
+      // 重置无限滚动
+      this.$refs.infiniteScroll?.reset()
       await Promise.all([
         this.fetchBalanceOverview(),
         this.fetchStats(),
@@ -680,10 +713,29 @@ export default {
       })
     },
     async loadMore(index, done) {
-      if (!this.hasMore) return done()
+      if (!this.hasMore) {
+        // 停止无限滚动
+        this.$refs.infiniteScroll?.stop()
+        return done()
+      }
       this.page += 1
       await this.fetchTransactions(false)
+      // 如果没有更多数据，停止无限滚动
+      if (!this.hasMore) {
+        this.$refs.infiniteScroll?.stop()
+      }
       done()
+    },
+    // 滚动事件处理
+    handleScroll() {
+      this.showBackToTop = window.scrollY > 300
+    },
+    // 回到顶部
+    scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
     },
     logout() {
       const auth = useAuthStore()
@@ -1860,5 +1912,25 @@ export default {
   .settlement-btn-compact {
     padding: 6px 8px;
   }
+}
+
+/* 回到顶部按钮 */
+.back-to-top-btn {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+/* 淡入淡出动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
