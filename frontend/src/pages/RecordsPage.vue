@@ -509,7 +509,7 @@ export default {
       },
       transactions: [],
       page: 1,
-      hasMore: true,
+      hasMore: false,  // 初始禁用，防止无限滚动自动触发
       totalCount: 0,
       loading: false,
       filterType: 'all',
