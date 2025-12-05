@@ -703,11 +703,13 @@ export default {
       this.loading = true
       try {
         const res = await api.get('/transactions', { params })
-        const data = res.data?.data || res.data
-        const list = (data?.data || data || [])
-        this.hasMore = !!data?.next_page_url
-        this.totalCount = data?.total || 0
+        // API 返回结构: res.data = { current_page, data: [...], next_page_url, total, ... }
+        const pagination = res.data?.data || res.data  // 如果有外层 data 包裹则取内层
+        const list = pagination?.data || []
+        this.hasMore = !!pagination?.next_page_url
+        this.totalCount = pagination?.total || 0
         this.transactions = reset ? list : [...this.transactions, ...list]
+        console.log('[fetchTransactions] page:', this.page, 'loaded:', list.length, 'total:', this.totalCount, 'hasMore:', this.hasMore)
       } catch (error) {
         console.error('Failed to fetch transactions:', error)
         this.$q.notify({
