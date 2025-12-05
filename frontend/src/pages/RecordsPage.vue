@@ -69,6 +69,11 @@
     <section class="transaction-section">
       <div class="section-header">
         <h6 class="section-title">交易明细</h6>
+        <!-- 根据筛选类型显示对应汇总 -->
+        <div class="header-summary" v-if="filterType === 'income' || filterType === 'outcome'">
+          <span class="summary-cny" :class="filterType">￥{{ formatInteger(filterType === 'income' ? stats.income.cny : stats.outcome.cny) }}</span>
+          <span class="summary-hkd" :class="filterType">HK${{ formatInteger(filterType === 'income' ? stats.income.hkd : stats.outcome.hkd) }}</span>
+        </div>
         <div class="header-actions">
           <!-- 结算按钮 -->
           <button 
@@ -79,25 +84,6 @@
             <span>结算</span>
           </button>
           <q-btn flat dense icon="refresh" size="sm" @click="refreshTransactions" :loading="loading" />
-        </div>
-      </div>
-
-      <!-- 每日汇总（未结算） -->
-      <div class="daily-summary">
-        <div class="summary-row">
-          <!-- 入账汇总 -->
-          <div class="summary-item income">
-            <span class="summary-label">入账</span>
-            <span class="summary-value">￥{{ formatInteger(stats.income.cny) }}</span>
-            <span class="summary-hkd">H{{ formatInteger(stats.income.hkd) }}</span>
-          </div>
-          <div class="summary-divider"></div>
-          <!-- 出账汇总 -->
-          <div class="summary-item outcome">
-            <span class="summary-label">出账</span>
-            <span class="summary-value">￥{{ formatInteger(stats.outcome.cny) }}</span>
-            <span class="summary-hkd">H{{ formatInteger(stats.outcome.hkd) }}</span>
-          </div>
         </div>
       </div>
 
@@ -1206,70 +1192,33 @@ export default {
   gap: 8px;
 }
 
-/* 每日汇总样式 */
-.daily-summary {
-  background: #fff;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.summary-row {
+/* 标题栏汇总样式 */
+.header-summary {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  flex-wrap: wrap;
+  margin-left: auto;
+  margin-right: 16px;
 }
 
-.summary-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: #f8f9fa;
-}
-
-.summary-item.income {
-  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
-  border-left: 3px solid #4caf50;
-}
-
-.summary-item.outcome {
-  background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
-  border-left: 3px solid #f44336;
-}
-
-.summary-item.instant {
-  background: linear-gradient(135deg, #f3e5f5 0%, #ede7f6 100%);
-  border-left: 3px solid #9c27b0;
-}
-
-.summary-label {
-  font-size: 12px;
+.header-summary .summary-cny {
+  font-size: 15px;
   font-weight: 600;
-  color: #666;
-  white-space: nowrap;
 }
 
-.summary-value {
+.header-summary .summary-hkd {
   font-size: 14px;
-  font-weight: 700;
-  color: #d32f2f;
-  white-space: nowrap;
+  font-weight: 500;
 }
 
-.summary-hkd {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1976d2;
-  white-space: nowrap;
+.header-summary .summary-cny.income,
+.header-summary .summary-hkd.income {
+  color: #E65100;
 }
 
-.summary-divider {
-  width: 1px;
-  height: 24px;
-  background: #e0e0e0;
+.header-summary .summary-cny.outcome,
+.header-summary .summary-hkd.outcome {
+  color: #2E7D32;
 }
 
 /* 紧凑型结算按钮 */
