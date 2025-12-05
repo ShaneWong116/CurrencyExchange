@@ -725,22 +725,21 @@ export default {
       if (this.filterType === type) return
       this.filterType = type
       this.page = 1
-      this.hasMore = true
+      this.hasMore = false  // 先禁用，防止 loadMore 被触发
       this.transactions = []
       await this.fetchTransactions(true)
-      // 重置无限滚动
-      this.$refs.infiniteScroll?.reset()
+      // 数据加载完成后，根据实际情况恢复 hasMore
+      // hasMore 已在 fetchTransactions 中正确设置
     },
     async refreshTransactions() {
       this.page = 1
-      this.hasMore = true
+      this.hasMore = false  // 先禁用，防止 loadMore 被触发
       await Promise.all([
         this.fetchBalanceOverview(),
         this.fetchStats(),
         this.fetchTransactions(true)
       ])
-      // 重置无限滚动
-      this.$refs.infiniteScroll?.reset()
+      // hasMore 已在 fetchTransactions 中正确设置
       this.$q.notify({
         type: 'positive',
         message: '刷新成功',
