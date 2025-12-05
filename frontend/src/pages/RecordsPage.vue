@@ -13,19 +13,30 @@
 
     <!-- Summary Section -->
     <section class="summary-section">
-      <div class="summary-card">
-        <div class="summary-details">
-          <div class="detail-row">
-            <div class="detail-label">人民币余额</div>
-            <div class="detail-value">¥{{ formatAmount(balanceOverview.total_rmb) }}</div>
+      <div class="summary-card compact">
+        <!-- 余额信息 -->
+        <div class="balance-row">
+          <div class="balance-item">
+            <span class="balance-label">人民币</span>
+            <span class="balance-value cny">¥{{ formatAmount(balanceOverview.total_rmb) }}</span>
           </div>
-          <div class="detail-row">
-            <div class="detail-label">港币余额</div>
-            <div class="detail-value">HK${{ formatAmount(balanceOverview.total_hkd) }}</div>
+          <div class="balance-divider"></div>
+          <div class="balance-item">
+            <span class="balance-label">港币</span>
+            <span class="balance-value hkd">HK${{ formatAmount(balanceOverview.total_hkd) }}</span>
           </div>
-          <div class="detail-row">
-            <div class="detail-label">交易数</div>
-            <div class="detail-value">{{ getCurrentCount() }}笔</div>
+          <div class="balance-divider"></div>
+          <div class="balance-item">
+            <span class="balance-label">交易数</span>
+            <span class="balance-value count">{{ getCurrentCount() }}笔</span>
+          </div>
+        </div>
+        <!-- 筛选汇总（仅入账/出账时显示） -->
+        <div class="filter-summary" v-if="filterType === 'income' || filterType === 'outcome'">
+          <div class="filter-summary-content" :class="filterType">
+            <span class="filter-type-label">{{ filterType === 'income' ? '入账' : '出账' }}汇总</span>
+            <span class="filter-amount-cny">￥{{ formatInteger(filterType === 'income' ? stats.income.cny : stats.outcome.cny) }}</span>
+            <span class="filter-amount-hkd">HK${{ formatInteger(filterType === 'income' ? stats.income.hkd : stats.outcome.hkd) }}</span>
           </div>
         </div>
       </div>
@@ -69,11 +80,6 @@
     <section class="transaction-section">
       <div class="section-header">
         <h6 class="section-title">交易明细</h6>
-        <!-- 根据筛选类型显示对应汇总 -->
-        <div class="header-summary" v-if="filterType === 'income' || filterType === 'outcome'">
-          <span class="summary-cny" :class="filterType">￥{{ formatInteger(filterType === 'income' ? stats.income.cny : stats.outcome.cny) }}</span>
-          <span class="summary-hkd" :class="filterType">HK${{ formatInteger(filterType === 'income' ? stats.income.hkd : stats.outcome.hkd) }}</span>
-        </div>
         <div class="header-actions">
           <!-- 结算按钮 -->
           <button 
@@ -688,29 +694,38 @@ export default {
     },
     // 切换筛选类型
     async changeFilter(type) {
-      console.log('changeFilter called:', type, 'current:', this.filterType)
       if (this.filterType === type) return
       this.filterType = type
       this.page = 1
       this.hasMore = true
       this.transactions = []
-      // 重置并触发无限滚动
-      this.$nextTick(() => {
-        this.$refs.infiniteScroll?.reset()
-        this.$refs.infiniteScroll?.resume()
-      })
       await this.fetchTransactions(true)
+      // 数据加载完成后重置无限滚动状态
+      this.$nextTick(() => {
+        if (this.$refs.infiniteScroll) {
+          this.$refs.infiniteScroll.reset()
+          this.$refs.infiniteScroll.resume()
+          // 触发一次滚动检测
+          this.$refs.infiniteScroll.poll()
+        }
+      })
     },
     async refreshTransactions() {
       this.page = 1
       this.hasMore = true
-      // 重置无限滚动
-      this.$refs.infiniteScroll?.reset()
       await Promise.all([
         this.fetchBalanceOverview(),
         this.fetchStats(),
         this.fetchTransactions(true)
       ])
+      // 重置无限滚动
+      this.$nextTick(() => {
+        if (this.$refs.infiniteScroll) {
+          this.$refs.infiniteScroll.reset()
+          this.$refs.infiniteScroll.resume()
+          this.$refs.infiniteScroll.poll()
+        }
+      })
       this.$q.notify({
         type: 'positive',
         message: '刷新成功',
@@ -1095,38 +1110,100 @@ export default {
 
 /* Summary Section */
 .summary-section {
-  padding: 16px;
+  padding: 12px 16px;
   background: #f5f5f5;
 }
 
-.summary-card {
+.summary-card.compact {
   background: #fff;
   border-radius: 12px;
-  padding: 20px;
+  padding: 12px 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.summary-details {
+/* 余额横向布局 */
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.balance-item {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  border: 1px solid #f0f0f0;
+  flex: 1;
 }
 
-.detail-row:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.12);
-  border-color: #e3f2fd;
+.balance-label {
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 2px;
+}
+
+.balance-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.balance-value.cny {
+  color: #d32f2f;
+}
+
+.balance-value.hkd {
+  color: #1976d2;
+}
+
+.balance-value.count {
+  color: #333;
+}
+
+.balance-divider {
+  width: 1px;
+  height: 28px;
+  background: #e0e0e0;
+}
+
+/* 筛选汇总 */
+.filter-summary {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.filter-summary-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.filter-summary-content.income {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.filter-summary-content.outcome {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.filter-type-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.filter-amount-cny {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e65100;
+}
+
+.filter-amount-hkd {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1565c0;
 }
 
 .detail-label {
@@ -1247,35 +1324,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* 标题栏汇总样式 */
-.header-summary {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-  margin-right: 16px;
-}
-
-.header-summary .summary-cny {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.header-summary .summary-hkd {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.header-summary .summary-cny.income,
-.header-summary .summary-hkd.income {
-  color: #E65100;
-}
-
-.header-summary .summary-cny.outcome,
-.header-summary .summary-hkd.outcome {
-  color: #2E7D32;
 }
 
 /* 紧凑型结算按钮 */
