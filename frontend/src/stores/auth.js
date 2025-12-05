@@ -250,9 +250,11 @@ export const useAuthStore = defineStore('auth', {
         this.logoutTimer = null
       }
       
-      // 清除localStorage中的持久化数据
+      // 清除localStorage中的所有持久化数据
       try {
         localStorage.removeItem('auth')
+        localStorage.removeItem('transaction')
+        localStorage.removeItem('draft')
       } catch (error) {
         console.error('[Auth] 清除localStorage失败:', error)
       }

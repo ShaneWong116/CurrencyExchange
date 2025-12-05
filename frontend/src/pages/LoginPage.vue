@@ -65,6 +65,11 @@
           测试账号: abc123 · 密码: 123456
         </div>
       </q-banner>
+
+      <!-- 版本号 -->
+      <div class="version-info">
+        v{{ appVersion }}
+      </div>
     </div>
   </q-page>
 </template>
@@ -73,9 +78,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import packageJson from '../../package.json'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const appVersion = packageJson.version
 
 const form = ref({
   username: '',
@@ -146,5 +153,12 @@ const handleLogin = async () => {
     box-shadow: none;
     background: transparent;
   }
+}
+
+.version-info {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #999;
 }
 </style>
