@@ -22,11 +22,9 @@ export const useTransactionStore = defineStore('transaction', {
       const today = new Date().toISOString().split('T')[0]
       return Array.isArray(state.transactions) ? state.transactions.filter(t => t.created_at && t.created_at.startsWith(today)) : []
     },
-    // 未结余的交易数量
+    // 未结余的交易数量（使用分页返回的 total）
     unsettledCount: (state) => {
-      return Array.isArray(state.transactions) 
-        ? state.transactions.filter(t => t.settlement_status === 'unsettled' || !t.settlement_status).length 
-        : 0
+      return state.pagination.rowsNumber || 0
     }
   },
 

@@ -688,12 +688,17 @@ export default {
     },
     // 切换筛选类型
     async changeFilter(type) {
+      console.log('changeFilter called:', type, 'current:', this.filterType)
       if (this.filterType === type) return
       this.filterType = type
       this.page = 1
       this.hasMore = true
       this.transactions = []
-      this.$refs.infiniteScroll?.reset()
+      // 重置并触发无限滚动
+      this.$nextTick(() => {
+        this.$refs.infiniteScroll?.reset()
+        this.$refs.infiniteScroll?.resume()
+      })
       await this.fetchTransactions(true)
     },
     async refreshTransactions() {
