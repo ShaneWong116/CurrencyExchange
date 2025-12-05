@@ -704,7 +704,8 @@ export default {
       try {
         const res = await api.get('/transactions', { params })
         // API 返回结构: res.data = { current_page, data: [...], next_page_url, total, ... }
-        const pagination = res.data?.data || res.data  // 如果有外层 data 包裹则取内层
+        // 或者 res.data = { data: { current_page, data: [...], ... } }
+        const pagination = res.data?.current_page !== undefined ? res.data : res.data?.data
         const list = pagination?.data || []
         this.hasMore = !!pagination?.next_page_url
         this.totalCount = pagination?.total || 0
