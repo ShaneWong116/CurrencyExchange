@@ -138,9 +138,17 @@ class SettlementService
         // 4. 计算当前结余汇率（成本汇率）
         // 公式：(期初人民币结余 + 当日入账人民币值) ÷ (期初港币结余 + 当日入账港币值)
         
-        // 获取期初人民币结余（上一次结余后的人民币余额）
-        $lastSettlement = Settlement::orderBy('id', 'desc')->first();
-        $previousRmbBalance = $lastSettlement ? (float) $lastSettlement->rmb_balance_total : 0;
+        // 获取期初人民币结余（各渠道 ChannelBalance.initial_amount 之和）
+        // 这样可以正确反映结余后的手动余额调整
+        $previousRmbBalance = 0;
+        foreach ($channels as $channel) {
+            $latestBalance = $channel->balances()
+                ->where('currency', 'RMB')
+                ->orderBy('date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            $previousRmbBalance += $latestBalance ? (float) $latestBalance->initial_amount : 0;
+        }
         
         // 期初港币结余
         $previousHkdBalance = $currentHkdBalance;

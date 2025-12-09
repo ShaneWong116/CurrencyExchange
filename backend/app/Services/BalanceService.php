@@ -138,6 +138,8 @@ class BalanceService
             $today = Carbon::today();
             $balance = ChannelBalance::getOrCreateTodayBalance($channelId, $currency, $currentBalance);
             $balance->current_balance = $adjustment->after_amount;
+            // 同步更新 initial_amount，确保期初余额反映手动调整
+            $balance->initial_amount += $adjustmentAmount;
             $balance->save();
             
             DB::commit();
