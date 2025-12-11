@@ -8,6 +8,7 @@ use App\Models\Channel;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
@@ -117,7 +118,7 @@ class TransactionController extends Controller
             DB::rollBack();
             
             // 记录详细错误到日志
-            \Log::error('Transaction creation failed', [
+            Log::error('Transaction creation failed', [
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -232,7 +233,7 @@ class TransactionController extends Controller
             DB::rollBack();
             
             // 记录详细错误到日志
-            \Log::error('Batch transaction creation failed', [
+            Log::error('Batch transaction creation failed', [
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -356,11 +357,8 @@ class TransactionController extends Controller
 
         DB::beginTransaction();
         try {
-            // 保存旧数据
+            // 保存旧渠道ID（用于更新交易计数）
             $oldChannelId = $transaction->channel_id;
-            $oldType = $transaction->type;
-            $oldRmbAmount = $transaction->rmb_amount;
-            $oldHkdAmount = $transaction->hkd_amount;
 
             // 计算即时买断利润
             $instantProfit = null;
@@ -403,7 +401,7 @@ class TransactionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            \Log::error('Transaction update failed', [
+            Log::error('Transaction update failed', [
                 'transaction_id' => $transaction->id,
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
@@ -458,7 +456,7 @@ class TransactionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            \Log::error('Transaction delete failed', [
+            Log::error('Transaction delete failed', [
                 'transaction_id' => $transaction->id,
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
