@@ -7,15 +7,86 @@ use App\Models\Image;
 use App\Models\Transaction;
 use App\Models\TransactionDraft;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image as ImageProcessor;
+use Illuminate\Support\Str;
 
 class ImageController extends Controller
 {
+    /**
+     * 使用 GD 库处理图片（压缩和调整大小）
+     */
+    private function processImage($imageData, $maxWidth = 1200, $quality = 80)
+    {
+        // 从二进制数据创建图片资源
+        $image = @imagecreatefromstring($imageData);
+        if (!$image) {
+            return ['success' => false, 'error' => '无效的图片数据'];
+        }
+
+        $originalWidth = imagesx($image);
+        $originalHeight = imagesy($image);
+
+        // 如果图片宽度超过最大值，进行缩放
+        if ($originalWidth > $maxWidth) {
+            $ratio = $maxWidth / $originalWidth;
+            $newWidth = $maxWidth;
+            $newHeight = intval($originalHeight * $ratio);
+
+            $resized = imagecreatetruecolor($newWidth, $newHeight);
+            
+            // 保持透明度（PNG）
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+            
+            imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $originalWidth, $originalHeight);
+            imagedestroy($image);
+            $image = $resized;
+            
+            $finalWidth = $newWidth;
+            $finalHeight = $newHeight;
+        } else {
+            $finalWidth = $originalWidth;
+            $finalHeight = $originalHeight;
+        }
+
+        // 输出为 JPEG
+        ob_start();
+        imagejpeg($image, null, $quality);
+        $compressedData = ob_get_clean();
+        imagedestroy($image);
+
+        return [
+            'success' => true,
+            'data' => $compressedData,
+            'width' => $finalWidth,
+            'height' => $finalHeight,
+            'mime_type' => 'image/jpeg'
+        ];
+    }
+
+    /**
+     * 保存图片到文件系统
+     */
+    private function saveToFileSystem($imageData, $uuid)
+    {
+        $directory = 'images/' . date('Y/m');
+        $filename = $uuid . '.jpg';
+        $path = $directory . '/' . $filename;
+        
+        // 确保目录存在
+        Storage::disk('local')->makeDirectory($directory);
+        
+        // 保存文件
+        Storage::disk('local')->put($path, $imageData);
+        
+        return $path;
+    }
+
     public function store(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:5120', // 明确指定MIME类型，5MB
+            'image' => 'required|image|mimes:jpeg,jpg,png|max:5120',
             'transaction_id' => 'nullable|exists:transactions,id',
             'draft_id' => 'nullable|exists:transaction_drafts,id',
         ]);
@@ -38,46 +109,34 @@ class ImageController extends Controller
         $file = $request->file('image');
         
         try {
-            // 验证是否真的是图片
-            $image = ImageProcessor::make($file);
+            $imageData = file_get_contents($file->getRealPath());
+            $result = $this->processImage($imageData);
             
-            // 检查图片有效性
-            if (!$image->width() || !$image->height()) {
+            if (!$result['success']) {
                 return response()->json([
-                    'message' => '无效的图片文件',
+                    'message' => $result['error'],
                     'error_code' => 'INVALID_IMAGE'
                 ], 400);
             }
             
-            // 检查图片尺寸限制（防止超大图片攻击）
-            if ($image->width() > 10000 || $image->height() > 10000) {
-                return response()->json([
-                    'message' => '图片尺寸过大',
-                    'error_code' => 'IMAGE_TOO_LARGE'
-                ], 400);
-            }
+            // 生成 UUID
+            $uuid = Str::uuid()->toString();
             
-            // 保持宽高比，最大宽度1200px
-            if ($image->width() > 1200) {
-                $image->resize(1200, null, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-            }
+            // 保存到文件系统
+            $filePath = $this->saveToFileSystem($result['data'], $uuid);
             
-            // 压缩质量
-            $compressedImage = $image->encode($file->getClientOriginalExtension(), 80);
-            
-            // 保存到数据库
+            // 保存到数据库（不存 Base64）
             $imageRecord = Image::create([
+                'uuid' => $uuid,
                 'transaction_id' => $request->transaction_id,
                 'draft_id' => $request->draft_id,
                 'original_name' => $file->getClientOriginalName(),
-                'file_size' => strlen($compressedImage),
-                'mime_type' => $file->getMimeType(),
-                'width' => $image->width(),
-                'height' => $image->height(),
-                'file_content' => base64_encode($compressedImage),
+                'file_size' => strlen($result['data']),
+                'mime_type' => $result['mime_type'],
+                'width' => $result['width'],
+                'height' => $result['height'],
+                'file_path' => $filePath,
+                'file_content' => null, // 不再存 Base64
             ]);
 
             return response()->json([
@@ -94,25 +153,15 @@ class ImageController extends Controller
                 ]
             ], 201);
 
-        } catch (\Intervention\Image\Exception\NotReadableException $e) {
-            return response()->json([
-                'message' => '无效的图片文件',
-                'error_code' => 'INVALID_IMAGE'
-            ], 400);
         } catch (\Exception $e) {
-            // 记录详细错误到日志
-            \Log::error('Image upload failed', [
+            Log::error('Image upload failed', [
                 'user_id' => $request->user()->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // 生产环境不返回详细错误信息
-            $message = app()->environment('production') 
-                ? '图片上传失败，请稍后重试' 
-                : $e->getMessage();
-            
             return response()->json([
-                'message' => $message,
+                'message' => '图片上传失败，请稍后重试',
                 'error_code' => 'IMAGE_UPLOAD_FAILED'
             ], 500);
         }
@@ -123,25 +172,30 @@ class ImageController extends Controller
         // 验证权限
         if ($image->transaction_id) {
             $transaction = Transaction::find($image->transaction_id);
-            if ($transaction->user_id !== $request->user()->id) {
+            if ($transaction && $transaction->user_id !== $request->user()->id) {
                 return response()->json(['message' => '无权访问'], 403);
             }
         }
 
         if ($image->draft_id) {
             $draft = TransactionDraft::find($image->draft_id);
-            if ($draft->user_id !== $request->user()->id) {
+            if ($draft && $draft->user_id !== $request->user()->id) {
                 return response()->json(['message' => '无权访问'], 403);
             }
         }
 
-        // 返回图片二进制数据
-        $imageData = base64_decode($image->file_content);
+        // 获取图片数据（兼容文件系统和数据库存储）
+        $imageData = $image->getImageData();
+        
+        if (!$imageData) {
+            return response()->json(['message' => '图片不存在'], 404);
+        }
         
         return response($imageData)
             ->header('Content-Type', $image->mime_type)
             ->header('Content-Length', strlen($imageData))
-            ->header('Content-Disposition', 'inline; filename="' . $image->original_name . '"');
+            ->header('Content-Disposition', 'inline; filename="' . $image->original_name . '"')
+            ->header('Cache-Control', 'public, max-age=86400'); // 缓存1天
     }
 
     public function destroy(Image $image, Request $request)
@@ -218,28 +272,34 @@ class ImageController extends Controller
             try {
                 // 解析Base64图片
                 $imageData = base64_decode($base64Image);
-                $image = ImageProcessor::make($imageData);
+                $result = $this->processImage($imageData);
                 
-                // 压缩处理
-                if ($image->width() > 1200) {
-                    $image->resize(1200, null, function ($constraint) {
-                        $constraint->aspectRatio();
-                        $constraint->upsize();
-                    });
+                if (!$result['success']) {
+                    $results[] = [
+                        'status' => 'error',
+                        'message' => $result['error']
+                    ];
+                    continue;
                 }
                 
-                $compressedImage = $image->encode('jpg', 80);
+                // 生成 UUID
+                $uuid = Str::uuid()->toString();
                 
-                // 保存到数据库
+                // 保存到文件系统
+                $filePath = $this->saveToFileSystem($result['data'], $uuid);
+                
+                // 保存到数据库（不存 Base64）
                 $imageRecord = Image::create([
+                    'uuid' => $uuid,
                     'transaction_id' => $request->transaction_id,
                     'draft_id' => $request->draft_id,
                     'original_name' => 'upload_' . time() . '_' . $index . '.jpg',
-                    'file_size' => strlen($compressedImage),
-                    'mime_type' => 'image/jpeg',
-                    'width' => $image->width(),
-                    'height' => $image->height(),
-                    'file_content' => base64_encode($compressedImage),
+                    'file_size' => strlen($result['data']),
+                    'mime_type' => $result['mime_type'],
+                    'width' => $result['width'],
+                    'height' => $result['height'],
+                    'file_path' => $filePath,
+                    'file_content' => null,
                 ]);
 
                 $results[] = [
@@ -253,9 +313,14 @@ class ImageController extends Controller
                 ];
 
             } catch (\Exception $e) {
+                Log::error('Batch image upload failed', [
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
                 $results[] = [
                     'status' => 'error',
-                    'message' => $e->getMessage()
+                    'message' => '图片处理失败'
                 ];
             }
         }

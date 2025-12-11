@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('mime_type', 100)->comment('MIME类型');
             $table->unsignedInteger('width')->nullable()->comment('图片宽度');
             $table->unsignedInteger('height')->nullable()->comment('图片高度');
-            $table->longText('file_content')->comment('图片Base64内容');
+            $table->string('file_path')->nullable()->comment('文件存储路径');
+            $table->longText('file_content')->nullable()->comment('图片Base64内容（兼容旧数据）');
             $table->timestamp('created_at')->useCurrent();
             
             $table->index(['transaction_id']);

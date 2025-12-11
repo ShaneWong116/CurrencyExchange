@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Image extends Model
@@ -21,7 +22,8 @@ class Image extends Model
         'mime_type',
         'width',
         'height',
-        'file_content'
+        'file_path',      // 文件系统存储路径
+        'file_content'    // Base64 存储（兼容旧数据）
     ];
 
     protected $casts = [
@@ -52,6 +54,45 @@ class Image extends Model
     public function getFileUrl()
     {
         return route('api.images.show', $this->uuid);
+    }
+
+    /**
+     * 获取图片二进制数据（兼容文件系统和数据库存储）
+     */
+    public function getImageData()
+    {
+        // 优先从文件系统读取
+        if ($this->file_path && Storage::disk('local')->exists($this->file_path)) {
+            return Storage::disk('local')->get($this->file_path);
+        }
+        
+        // 兼容旧的 Base64 存储
+        if ($this->file_content) {
+            return base64_decode($this->file_content);
+        }
+        
+        return null;
+    }
+
+    /**
+     * 检查是否使用文件系统存储
+     */
+    public function isFileSystemStorage()
+    {
+        return !empty($this->file_path);
+    }
+
+    /**
+     * 删除关联的文件（模型删除时调用）
+     */
+    protected static function booted()
+    {
+        static::deleting(function ($image) {
+            // 删除文件系统中的文件
+            if ($image->file_path && Storage::disk('local')->exists($image->file_path)) {
+                Storage::disk('local')->delete($image->file_path);
+            }
+        });
     }
 
     public function getFileSizeFormatted()
