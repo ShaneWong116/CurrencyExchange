@@ -459,6 +459,26 @@
               dense
               rows="2"
             />
+
+            <!-- 关联图片 -->
+            <div v-if="editingTransaction?.images && editingTransaction.images.length > 0" class="q-mt-md">
+              <div class="text-subtitle2 q-mb-sm">关联图片 ({{ editingTransaction.images.length }}张)</div>
+              <div class="row q-gutter-sm">
+                <div v-for="img in editingTransaction.images" :key="img.id" class="col-auto">
+                  <q-img
+                    :src="getImageUrl(img)"
+                    :alt="img.original_name"
+                    style="width: 80px; height: 80px; border-radius: 8px; cursor: pointer;"
+                    fit="cover"
+                    @click="previewImage(img)"
+                  >
+                    <template v-slot:loading>
+                      <q-spinner color="primary" />
+                    </template>
+                  </q-img>
+                </div>
+              </div>
+            </div>
           </q-form>
         </q-card-section>
 
@@ -946,15 +966,24 @@ export default {
       }
     },
     // 打开编辑对话框
-    openEditDialog(transaction) {
-      this.editingTransaction = transaction
+    async openEditDialog(transaction) {
+      // 先获取交易详情（包含图片）
+      try {
+        const res = await api.get(`/transactions/${transaction.id}`)
+        this.editingTransaction = res.data
+      } catch (error) {
+        console.error('Failed to fetch transaction detail:', error)
+        // 如果获取详情失败，使用列表中的数据
+        this.editingTransaction = transaction
+      }
+      
       this.editForm = {
-        channel_id: transaction.channel_id,
-        rmb_amount: Number(transaction.rmb_amount),
-        hkd_amount: Number(transaction.hkd_amount),
-        exchange_rate: Number(transaction.exchange_rate),
-        instant_rate: transaction.instant_rate ? Number(transaction.instant_rate) : null,
-        notes: transaction.notes || ''
+        channel_id: this.editingTransaction.channel_id,
+        rmb_amount: Number(this.editingTransaction.rmb_amount),
+        hkd_amount: Number(this.editingTransaction.hkd_amount),
+        exchange_rate: Number(this.editingTransaction.exchange_rate),
+        instant_rate: this.editingTransaction.instant_rate ? Number(this.editingTransaction.instant_rate) : null,
+        notes: this.editingTransaction.notes || ''
       }
       this.showEditDialog = true
     },
@@ -1062,6 +1091,17 @@ export default {
       } finally {
         this.isDeleting = false
       }
+    },
+    // 获取图片URL
+    getImageUrl(image) {
+      // 使用 API 基础路径 + 图片路由
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+      return `${baseUrl}/images/${image.uuid}`
+    },
+    // 预览图片
+    previewImage(image) {
+      const url = this.getImageUrl(image)
+      window.open(url, '_blank')
     }
   }
 }

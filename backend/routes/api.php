@@ -73,11 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/drafts/batch-sync', [\App\Http\Controllers\Api\DraftController::class, 'batchSync']);
     
     // 图片管理
-    Route::post('/images', [\App\Http\Controllers\Api\ImageController::class, 'store']);
-    Route::get('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'show']);
-    Route::delete('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'destroy']);
+    Route::post('/images', [\App\Http\Controllers\Api\ImageController::class, 'store'])->name('api.images.store');
+    Route::get('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'show'])->name('api.images.show');
+    Route::delete('/images/{image}', [\App\Http\Controllers\Api\ImageController::class, 'destroy'])->name('api.images.destroy');
     Route::post('/images/batch', [\App\Http\Controllers\Api\ImageController::class, 'batchUpload'])
-        ->middleware('throttle:5,1'); // 批量图片上传限流：每分钟5次
+        ->middleware('throttle:5,1') // 批量图片上传限流：每分钟5次
+        ->name('api.images.batch');
     
     // 后台管理路由 - 需要管理员权限
     Route::prefix('admin')->middleware('admin')->group(function () {

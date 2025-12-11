@@ -153,6 +153,7 @@ import { useDraftStore } from '@/stores/draft'
 import { useAuthStore } from '@/stores/auth'
 import { Dialog, Notify } from 'quasar'
 import { v4 as uuidv4 } from 'uuid'
+import { api } from '@/utils/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -345,6 +346,43 @@ const removeImage = (index) => {
   images.value.splice(index, 1)
 }
 
+// 将文件转换为 Base64
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      // 去掉 data:image/xxx;base64, 前缀
+      const base64 = reader.result.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// 上传图片到服务器
+const uploadImages = async (transactionId = null, draftId = null) => {
+  if (images.value.length === 0) return { success: true }
+  
+  try {
+    // 将所有文件转为 Base64
+    const base64Images = await Promise.all(
+      images.value.map(file => fileToBase64(file))
+    )
+    
+    // 调用批量上传 API
+    const response = await api.post('/images/batch', {
+      images: base64Images,
+      transaction_id: transactionId,
+      draft_id: draftId
+    })
+    
+    return { success: true, data: response.data }
+  } catch (error) {
+    console.error('图片上传失败:', error)
+    return { success: false, message: error.response?.data?.message || '图片上传失败' }
+  }
+}
 
 const loadDraftIfEditing = () => {
   if (!isEditing.value) return
@@ -389,14 +427,25 @@ const saveDraft = async () => {
   isSavingDraft.value = true
   try {
     const draft = toBackendPayload()
+    let savedDraft = null
+    
     if (editingDraftRef.value?.id) {
-      await draftStore.updateDraft(editingDraftRef.value.id, { ...editingDraftRef.value, ...draft })
+      savedDraft = await draftStore.updateDraft(editingDraftRef.value.id, { ...editingDraftRef.value, ...draft })
     } else if (editingDraftRef.value?.uuid) {
       // 更新本地草稿
-      await draftStore.saveDraft({ ...editingDraftRef.value, ...draft })
+      savedDraft = await draftStore.saveDraft({ ...editingDraftRef.value, ...draft })
     } else {
-      await draftStore.saveDraft(draft)
+      savedDraft = await draftStore.saveDraft(draft)
     }
+    
+    // 上传图片到草稿（仅云端草稿支持）
+    if (images.value.length > 0 && savedDraft?.id) {
+      const uploadResult = await uploadImages(null, savedDraft.id)
+      if (!uploadResult.success) {
+        Notify.create({ type: 'warning', message: '草稿已保存，但图片上传失败', position: 'top' })
+      }
+    }
+    
     Notify.create({ type: 'positive', message: '草稿已保存', position: 'top' })
     router.push('/drafts')
   } finally {
@@ -435,6 +484,13 @@ const onSubmit = async () => {
     if (transactionType.value === 'instant-buyout') {
       const result = await transactionStore.submitInstantBuyout(data)
       if (result.success) {
+        // 上传图片
+        if (images.value.length > 0) {
+          const uploadResult = await uploadImages(result.data.id, null)
+          if (!uploadResult.success) {
+            Notify.create({ type: 'warning', message: '交易已提交，但图片上传失败', position: 'top' })
+          }
+        }
         Notify.create({ type: 'positive', message: '即时买断提交成功', position: 'top' })
         router.push('/home')
       } else {
@@ -443,6 +499,13 @@ const onSubmit = async () => {
     } else {
       const result = await transactionStore.createTransaction(data)
       if (result.success) {
+        // 上传图片
+        if (images.value.length > 0) {
+          const uploadResult = await uploadImages(result.data.id, null)
+          if (!uploadResult.success) {
+            Notify.create({ type: 'warning', message: '交易已提交，但图片上传失败', position: 'top' })
+          }
+        }
         Notify.create({ type: 'positive', message: '交易提交成功', position: 'top' })
         router.push('/home')
       }

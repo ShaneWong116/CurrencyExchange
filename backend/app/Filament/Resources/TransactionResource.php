@@ -118,6 +118,31 @@ class TransactionResource extends Resource
                             ->default(now())
                             ->required(),
                     ])->columns(2),
+                    
+                Forms\Components\Section::make('关联图片')
+                    ->schema([
+                        Forms\Components\Placeholder::make('images_display')
+                            ->label('')
+                            ->content(function ($record) {
+                                if (!$record || !$record->images || $record->images->isEmpty()) {
+                                    return '暂无图片';
+                                }
+                                
+                                $html = '<div style="display: flex; flex-wrap: wrap; gap: 12px;">';
+                                foreach ($record->images as $image) {
+                                    $url = route('api.images.show', $image->uuid);
+                                    $html .= '<a href="' . $url . '" target="_blank" style="display: block;">';
+                                    $html .= '<img src="' . $url . '" style="max-width: 200px; max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />';
+                                    $html .= '</a>';
+                                }
+                                $html .= '</div>';
+                                
+                                return new \Illuminate\Support\HtmlString($html);
+                            })
+                            ->columnSpan('full'),
+                    ])
+                    ->visible(fn ($record) => $record && $record->images && $record->images->count() > 0)
+                    ->collapsible(),
             ]);
     }
 
