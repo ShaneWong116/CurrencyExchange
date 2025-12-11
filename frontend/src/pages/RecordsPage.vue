@@ -28,12 +28,12 @@
             <div class="detail-value">{{ getCurrentCount() }}笔</div>
           </div>
         </div>
-        <!-- 筛选汇总（仅入账/出账时显示） -->
-        <div class="filter-summary" v-if="filterType === 'income' || filterType === 'outcome'">
+        <!-- 筛选汇总（入账/出账/即时买断时显示） -->
+        <div class="filter-summary" v-if="filterType === 'income' || filterType === 'outcome' || filterType === 'instant_buyout'">
           <div class="filter-summary-content" :class="filterType">
-            <span class="filter-type-label">{{ filterType === 'income' ? '入账' : '出账' }}汇总</span>
-            <span class="filter-amount-cny">￥{{ formatInteger(filterType === 'income' ? stats.income.cny : stats.outcome.cny) }}</span>
-            <span class="filter-amount-hkd">HK${{ formatInteger(filterType === 'income' ? stats.income.hkd : stats.outcome.hkd) }}</span>
+            <span class="filter-type-label">{{ getFilterTypeLabel() }}汇总</span>
+            <span class="filter-amount-cny">￥{{ formatInteger(getFilterStats().cny) }}</span>
+            <span class="filter-amount-hkd">HK${{ formatInteger(getFilterStats().hkd) }}</span>
           </div>
         </div>
       </div>
@@ -814,6 +814,22 @@ export default {
     formatInteger(value) {
       return Math.round(parseFloat(value || 0)).toString()
     },
+    getFilterTypeLabel() {
+      const labels = {
+        'income': '入账',
+        'outcome': '出账',
+        'instant_buyout': '即时买断'
+      }
+      return labels[this.filterType] || ''
+    },
+    getFilterStats() {
+      const statsMap = {
+        'income': this.stats.income,
+        'outcome': this.stats.outcome,
+        'instant_buyout': this.stats.instant
+      }
+      return statsMap[this.filterType] || { cny: 0, hkd: 0 }
+    },
     formatRate(value) {
       return parseFloat(value || 0).toFixed(3)
     },
@@ -1191,6 +1207,18 @@ export default {
   font-size: 15px;
   font-weight: 600;
   color: #1565c0;
+}
+
+.filter-summary-content.instant_buyout .filter-type-label {
+  color: #7b1fa2;
+}
+
+.filter-summary-content.instant_buyout .filter-amount-cny {
+  color: #9c27b0;
+}
+
+.filter-summary-content.instant_buyout .filter-amount-hkd {
+  color: #7b1fa2;
 }
 
 /* 加载更多按钮 */
