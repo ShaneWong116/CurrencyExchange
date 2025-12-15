@@ -121,17 +121,20 @@ class TransactionController extends Controller
             Log::error('Transaction creation failed', [
                 'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // 生产环境不返回详细错误信息
-            $message = app()->environment('production') 
-                ? '操作失败，请稍后重试' 
-                : $e->getMessage();
-            
+            // 返回更详细的错误信息以便调试
             return response()->json([
-                'message' => $message,
-                'error_code' => 'TRANSACTION_CREATE_FAILED'
+                'message' => '操作失败，请稍后重试',
+                'error_code' => 'TRANSACTION_CREATE_FAILED',
+                'debug_info' => [
+                    'error' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine()
+                ]
             ], 500);
         }
     }

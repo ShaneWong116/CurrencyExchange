@@ -18,10 +18,41 @@ class ImageController extends Controller
      */
     private function processImage($imageData, $maxWidth = 1200, $quality = 80)
     {
+        // 检查 GD 库是否可用
+        if (!function_exists('imagecreatefromstring')) {
+            Log::error('GD library not available');
+            return ['success' => false, 'error' => 'GD库未安装'];
+        }
+        
+        // 检查图片数据是否为空
+        if (empty($imageData)) {
+            return ['success' => false, 'error' => '图片数据为空'];
+        }
+        
+        // 尝试获取图片信息
+        $imageInfo = @getimagesizefromstring($imageData);
+        if ($imageInfo === false) {
+            Log::error('Invalid image data', [
+                'data_length' => strlen($imageData),
+                'first_bytes' => bin2hex(substr($imageData, 0, 16))
+            ]);
+            return ['success' => false, 'error' => '无效的图片格式'];
+        }
+        
+        Log::info('Image info', [
+            'width' => $imageInfo[0],
+            'height' => $imageInfo[1],
+            'mime' => $imageInfo['mime']
+        ]);
+        
         // 从二进制数据创建图片资源
         $image = @imagecreatefromstring($imageData);
         if (!$image) {
-            return ['success' => false, 'error' => '无效的图片数据'];
+            Log::error('imagecreatefromstring failed', [
+                'mime' => $imageInfo['mime'],
+                'data_length' => strlen($imageData)
+            ]);
+            return ['success' => false, 'error' => '无法解析图片数据'];
         }
 
         $originalWidth = imagesx($image);
@@ -270,11 +301,48 @@ class ImageController extends Controller
 
         foreach ($request->images as $index => $base64Image) {
             try {
+                // 清理 Base64 字符串（移除可能的前缀、空格、换行）
+                $cleanBase64 = $base64Image;
+                
+                // 如果包含 data URI 前缀，移除它
+                if (strpos($cleanBase64, 'data:') === 0) {
+                    $cleanBase64 = preg_replace('/^data:image\/\w+;base64,/', '', $cleanBase64);
+                }
+                
+                // 移除空格和换行
+                $cleanBase64 = preg_replace('/\s+/', '', $cleanBase64);
+                
                 // 解析Base64图片
-                $imageData = base64_decode($base64Image);
+                $imageData = base64_decode($cleanBase64, true);
+                
+                if ($imageData === false) {
+                    Log::error('Base64 decode failed', [
+                        'index' => $index,
+                        'base64_length' => strlen($base64Image),
+                        'clean_base64_length' => strlen($cleanBase64),
+                        'base64_preview' => substr($base64Image, 0, 100)
+                    ]);
+                    $results[] = [
+                        'status' => 'error',
+                        'message' => 'Base64解码失败'
+                    ];
+                    continue;
+                }
+                
+                Log::info('Processing image', [
+                    'index' => $index,
+                    'decoded_size' => strlen($imageData),
+                    'first_bytes' => bin2hex(substr($imageData, 0, 16))
+                ]);
+                
                 $result = $this->processImage($imageData);
                 
                 if (!$result['success']) {
+                    Log::error('Image processing failed', [
+                        'index' => $index,
+                        'error' => $result['error'],
+                        'decoded_size' => strlen($imageData)
+                    ]);
                     $results[] = [
                         'status' => 'error',
                         'message' => $result['error']

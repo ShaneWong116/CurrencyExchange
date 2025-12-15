@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -59,13 +60,20 @@ class Transaction extends Model
 
         // 交易创建后更新统计
         static::created(function ($transaction) {
-            // 更新仪表盘总统计
-            $dashboardStats = CurrentStatistic::getOrCreate('dashboard');
-            $dashboardStats->addTransaction($transaction);
+            // 更新仪表盘总统计（使用 try-catch 防止统计表不存在导致交易失败）
+            try {
+                $dashboardStats = CurrentStatistic::getOrCreate('dashboard');
+                $dashboardStats->addTransaction($transaction);
 
-            // 更新渠道统计
-            $channelStats = CurrentStatistic::getOrCreate('channel', $transaction->channel_id);
-            $channelStats->addTransaction($transaction);
+                // 更新渠道统计
+                $channelStats = CurrentStatistic::getOrCreate('channel', $transaction->channel_id);
+                $channelStats->addTransaction($transaction);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update current statistics', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
             
             // 更新渠道余额（入账/出账交易）
             if (in_array($transaction->type, ['income', 'outcome'])) {
@@ -118,18 +126,25 @@ class Transaction extends Model
 
         // 交易删除后更新统计
         static::deleted(function ($transaction) {
-            // 更新仪表盘总统计
-            $dashboardStats = CurrentStatistic::where('stat_type', 'dashboard')->first();
-            if ($dashboardStats) {
-                $dashboardStats->removeTransaction($transaction);
-            }
+            // 更新仪表盘总统计（使用 try-catch 防止统计表不存在导致删除失败）
+            try {
+                $dashboardStats = CurrentStatistic::where('stat_type', 'dashboard')->first();
+                if ($dashboardStats) {
+                    $dashboardStats->removeTransaction($transaction);
+                }
 
-            // 更新渠道统计
-            $channelStats = CurrentStatistic::where('stat_type', 'channel')
-                ->where('reference_id', $transaction->channel_id)
-                ->first();
-            if ($channelStats) {
-                $channelStats->removeTransaction($transaction);
+                // 更新渠道统计
+                $channelStats = CurrentStatistic::where('stat_type', 'channel')
+                    ->where('reference_id', $transaction->channel_id)
+                    ->first();
+                if ($channelStats) {
+                    $channelStats->removeTransaction($transaction);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update current statistics on delete', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage()
+                ]);
             }
             
             // 回滚渠道余额（仅针对未结算的入账/出账交易）
