@@ -159,9 +159,11 @@ class SettlementController extends Controller
     {
         try {
             // 验证输入
+            // 日期验证放宽到只检查格式，具体的日期范围由 Service 层验证
+            // 这样可以避免 Controller 和 Service 时区不一致的问题
             $validator = Validator::make($request->all(), [
                 'password' => 'required|string',
-                'settlement_date' => 'required|date|after_or_equal:today', // 只能选择今天或之后
+                'settlement_date' => 'required|date_format:Y-m-d', // 只验证格式，范围由Service验证
                 'expenses' => 'nullable|array',
                 'expenses.*.item_name' => 'required|string|max:100',
                 'expenses.*.amount' => 'required|numeric|min:0',
@@ -170,8 +172,7 @@ class SettlementController extends Controller
             ], [
                 'password.required' => '确认密码不能为空',
                 'settlement_date.required' => '结余日期不能为空',
-                'settlement_date.date' => '结余日期格式不正确',
-                'settlement_date.after_or_equal' => '该日期不可用，请选择其他可用日期',
+                'settlement_date.date_format' => '结余日期格式不正确，请使用YYYY-MM-DD格式',
                 'expenses.*.item_name.required' => '支出项目名称不能为空',
                 'expenses.*.item_name.max' => '支出项目名称不能超过100个字符',
                 'expenses.*.amount.required' => '支出金额不能为空',
@@ -183,9 +184,11 @@ class SettlementController extends Controller
             ]);
 
             if ($validator->fails()) {
+                // 获取第一个错误信息作为主要提示
+                $firstError = $validator->errors()->first();
                 return response()->json([
                     'success' => false,
-                    'message' => '数据验证失败',
+                    'message' => $firstError ?: '数据验证失败',
                     'errors' => $validator->errors(),
                 ], 422);
             }
