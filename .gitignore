@@ -41,6 +41,13 @@ yarn-error.log*
 /backend/storage/framework/views/*
 /fuel/app/cache/*/*
 
+# SQLite 数据库（本地开发）
+/backend/database/database.sqlite
+/backend/database/*.sqlite
+
+# 根目录 package-lock
+/package-lock.json
+
 # Composer
 composer.phar
 /fuel/vendor/

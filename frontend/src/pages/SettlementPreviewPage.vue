@@ -195,7 +195,10 @@
         <!-- 其他支出 -->
         <q-card class="q-mb-md">
           <q-card-section>
-            <div class="text-subtitle2 q-mb-md">其他支出（可选）</div>
+            <div class="text-subtitle2 q-mb-md">
+              <q-icon name="remove_circle" color="negative" class="q-mr-xs" />
+              其他支出（可选）
+            </div>
             
             <div v-for="(expense, index) in expenses" :key="index" class="row q-gutter-md q-mb-md">
               <div class="col">
@@ -235,12 +238,89 @@
               @click="addExpense"
             />
 
-            <q-separator class="q-my-md" />
+            <div class="text-right q-mt-md">
+              <div class="text-subtitle2">总支出：<span class="text-h6 text-weight-bold text-negative">-{{ totalExpenses }} HKD</span></div>
+            </div>
+          </q-card-section>
+        </q-card>
 
-            <div class="text-right">
-              <div class="text-subtitle2">总支出：<span class="text-h6 text-weight-bold text-negative">{{ totalExpenses }} HKD</span></div>
-              <div class="text-caption text-grey-7 q-mt-sm">
-                实际新本金：{{ formatCurrency(preview.new_capital - totalExpenses) }} HKD
+        <!-- 其他收入 -->
+        <q-card class="q-mb-md">
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-md">
+              <q-icon name="add_circle" color="positive" class="q-mr-xs" />
+              其他收入（可选）
+            </div>
+            
+            <div v-for="(income, index) in incomes" :key="index" class="row q-gutter-md q-mb-md">
+              <div class="col">
+                <q-input
+                  v-model="income.item_name"
+                  label="收入项目名称"
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="col-4">
+                <q-input
+                  v-model.number="income.amount"
+                  type="number"
+                  label="金额"
+                  outlined
+                  dense
+                  suffix="HKD"
+                />
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  color="negative"
+                  icon="delete"
+                  @click="removeIncome(index)"
+                />
+              </div>
+            </div>
+
+            <q-btn
+              flat
+              color="positive"
+              icon="add"
+              label="添加收入项"
+              @click="addIncome"
+            />
+
+            <div class="text-right q-mt-md">
+              <div class="text-subtitle2">总收入：<span class="text-h6 text-weight-bold text-positive">+{{ totalIncomes }} HKD</span></div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- 汇总 -->
+        <q-card class="q-mb-md" style="border: 2px solid #4caf50; border-radius: 10px;">
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-md text-weight-bold">本金变化汇总</div>
+            <div class="row q-gutter-md">
+              <div class="col text-center">
+                <div class="text-caption text-grey-7">利润</div>
+                <div class="text-h6" :class="preview.total_profit >= 0 ? 'text-positive' : 'text-negative'">
+                  {{ preview.total_profit >= 0 ? '+' : '' }}{{ formatInteger(preview.total_profit) }}
+                </div>
+              </div>
+              <div class="col text-center">
+                <div class="text-caption text-grey-7">其他支出</div>
+                <div class="text-h6 text-negative">-{{ totalExpenses }}</div>
+              </div>
+              <div class="col text-center">
+                <div class="text-caption text-grey-7">其他收入</div>
+                <div class="text-h6 text-positive">+{{ totalIncomes }}</div>
+              </div>
+            </div>
+            <q-separator class="q-my-md" />
+            <div class="text-center">
+              <div class="text-caption text-grey-7">实际新本金</div>
+              <div class="text-h5 text-weight-bold text-primary">
+                {{ formatCurrency(preview.new_capital - totalExpenses + totalIncomes) }} HKD
               </div>
             </div>
           </q-card-section>
@@ -419,6 +499,7 @@ const preview = ref({
 const showChannelRmbBalances = ref(false)
 const instantBuyoutRate = ref(null)
 const expenses = ref([])
+const incomes = ref([])
 const notes = ref('')
 const showPasswordDialog = ref(false)
 const password = ref('')
@@ -433,6 +514,10 @@ const dateWarning = ref(null)  // 日期警告信息
 // 计算属性
 const totalExpenses = computed(() => {
   return expenses.value.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0)
+})
+
+const totalIncomes = computed(() => {
+  return incomes.value.reduce((sum, inc) => sum + (parseFloat(inc.amount) || 0), 0)
 })
 
 const canSubmit = computed(() => {
@@ -559,6 +644,17 @@ const removeExpense = (index) => {
   expenses.value.splice(index, 1)
 }
 
+const addIncome = () => {
+  incomes.value.push({
+    item_name: '',
+    amount: 0
+  })
+}
+
+const removeIncome = (index) => {
+  incomes.value.splice(index, 1)
+}
+
 const confirmSettlement = async () => {
   if (!password.value) {
     $q.notify({
@@ -577,6 +673,9 @@ const confirmSettlement = async () => {
       expenses: expenses.value
         .filter(exp => exp.amount !== 0 && exp.amount !== '' && exp.amount !== null)
         .map(exp => ({ item_name: exp.item_name || '支出', amount: exp.amount })),
+      incomes: incomes.value
+        .filter(inc => inc.amount !== 0 && inc.amount !== '' && inc.amount !== null)
+        .map(inc => ({ item_name: inc.item_name || '收入', amount: inc.amount })),
       notes: notes.value || null
     }
     

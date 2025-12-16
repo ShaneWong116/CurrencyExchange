@@ -26,6 +26,10 @@ Route::get('/health', function () {
 // 公开路由
 Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
 
+// 图片显示 - 公开访问（图片本身通过 UUID 保护）
+// 使用 /images/public/{uuid} 路径避免与认证路由冲突
+Route::get('/images/public/{uuid}', [\App\Http\Controllers\Api\ImageController::class, 'showPublic'])->name('api.images.show.public');
+
 // 需要认证的路由
 Route::middleware('auth:sanctum')->group(function () {
     // 认证相关

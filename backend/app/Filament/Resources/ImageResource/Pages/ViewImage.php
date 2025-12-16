@@ -17,10 +17,14 @@ class ViewImage extends ViewRecord
                 ->label('下载原图')
                 ->icon('heroicon-m-arrow-down-tray')
                 ->action(function () {
-                    $content = base64_decode($this->record->file_content);
-                    return response($content)
-                        ->header('Content-Type', $this->record->mime_type)
-                        ->header('Content-Disposition', 'attachment; filename="' . $this->record->original_name . '"');
+                    $content = $this->record->getImageData();
+                    $filename = $this->record->original_name;
+                    
+                    return response()->streamDownload(function () use ($content) {
+                        echo $content;
+                    }, $filename, [
+                        'Content-Type' => $this->record->mime_type,
+                    ]);
                 }),
         ];
     }

@@ -73,19 +73,38 @@
 
               <q-item>
                 <q-item-section>
-                  <q-item-label caption>总支出</q-item-label>
+                  <q-item-label caption>其他支出</q-item-label>
                   <q-item-label class="text-negative">
-                    {{ formatCurrency(settlement.other_expenses_total) }} HKD
+                    -{{ formatCurrency(settlement.other_expenses_total) }} HKD
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-btn
-                    v-if="settlement.expenses && settlement.expenses.length > 0"
+                    v-if="expenseItems.length > 0"
                     flat
                     dense
-                    color="primary"
+                    color="negative"
                     label="查看明细"
                     @click="showExpensesDialog = true"
+                  />
+                </q-item-section>
+              </q-item>
+
+              <q-item>
+                <q-item-section>
+                  <q-item-label caption>其他收入</q-item-label>
+                  <q-item-label class="text-positive">
+                    +{{ formatCurrency(settlement.other_incomes_total || 0) }} HKD
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn
+                    v-if="incomeItems.length > 0"
+                    flat
+                    dense
+                    color="positive"
+                    label="查看明细"
+                    @click="showIncomesDialog = true"
                   />
                 </q-item-section>
               </q-item>
@@ -196,12 +215,12 @@
 
         <q-card-section>
           <q-list separator>
-            <q-item v-for="expense in settlement.expenses" :key="expense.id">
+            <q-item v-for="expense in expenseItems" :key="expense.id">
               <q-item-section>
                 <q-item-label>{{ expense.item_name }}</q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-item-label class="text-negative">{{ formatCurrency(expense.amount) }} HKD</q-item-label>
+                <q-item-label class="text-negative">-{{ formatCurrency(expense.amount) }} HKD</q-item-label>
               </q-item-section>
             </q-item>
 
@@ -211,7 +230,44 @@
               </q-item-section>
               <q-item-section side>
                 <q-item-label class="text-weight-bold text-negative">
-                  {{ formatCurrency(settlement.other_expenses_total) }} HKD
+                  -{{ formatCurrency(settlement.other_expenses_total) }} HKD
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="关闭" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- 收入明细对话框 -->
+    <q-dialog v-model="showIncomesDialog">
+      <q-card style="min-width: 350px;">
+        <q-card-section>
+          <div class="text-h6">其他收入明细</div>
+        </q-card-section>
+
+        <q-card-section>
+          <q-list separator>
+            <q-item v-for="income in incomeItems" :key="income.id">
+              <q-item-section>
+                <q-item-label>{{ income.item_name }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-item-label class="text-positive">+{{ formatCurrency(income.amount) }} HKD</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">总收入</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-item-label class="text-weight-bold text-positive">
+                  +{{ formatCurrency(settlement.other_incomes_total || 0) }} HKD
                 </q-item-label>
               </q-item-section>
             </q-item>
@@ -227,7 +283,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { date } from 'quasar'
@@ -241,6 +297,18 @@ const loading = ref(false)
 const settlement = ref(null)
 const detail = ref(null)
 const showExpensesDialog = ref(false)
+const showIncomesDialog = ref(false)
+
+// 计算属性 - 分离支出和收入项
+const expenseItems = computed(() => {
+  if (!settlement.value?.expenses) return []
+  return settlement.value.expenses.filter(item => item.type === 'expense' || !item.type)
+})
+
+const incomeItems = computed(() => {
+  if (!settlement.value?.expenses) return []
+  return settlement.value.expenses.filter(item => item.type === 'income')
+})
 
 // 方法
 const formatCurrency = (value) => {

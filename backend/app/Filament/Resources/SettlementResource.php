@@ -85,6 +85,12 @@ class SettlementResource extends Resource
                     ->money('HKD')
                     ->sortable(),
                 
+                Tables\Columns\TextColumn::make('other_incomes_total')
+                    ->label('其他收入')
+                    ->money('HKD')
+                    ->color('success')
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('new_capital')
                     ->label('结余后本金')
                     ->money('HKD')
@@ -208,6 +214,13 @@ class SettlementResource extends Resource
                         Infolists\Components\TextEntry::make('other_expenses_total')
                             ->label('其他支出')
                             ->money('HKD')
+                            ->color('danger')
+                            ->size('lg'),
+                        
+                        Infolists\Components\TextEntry::make('other_incomes_total')
+                            ->label('其他收入')
+                            ->money('HKD')
+                            ->color('success')
                             ->size('lg'),
                         
                         Infolists\Components\TextEntry::make('new_capital')
@@ -217,7 +230,7 @@ class SettlementResource extends Resource
                             ->size('lg')
                             ->weight('bold'),
                     ])
-                    ->columns(3),
+                    ->columns(4),
 
                 Infolists\Components\Section::make('港币结余变化')
                     ->schema([
@@ -242,13 +255,18 @@ class SettlementResource extends Resource
                         Infolists\Components\RepeatableEntry::make('expenses')
                             ->label('')
                             ->schema([
+                                Infolists\Components\TextEntry::make('type')
+                                    ->label('类型')
+                                    ->badge()
+                                    ->color(fn (string $state): string => $state === 'income' ? 'success' : 'danger')
+                                    ->formatStateUsing(fn (string $state): string => $state === 'income' ? '收入' : '支出'),
                                 Infolists\Components\TextEntry::make('item_name')
-                                    ->label('支出项目'),
+                                    ->label('项目名称'),
                                 Infolists\Components\TextEntry::make('amount')
                                     ->label('金额')
                                     ->money('HKD'),
                             ])
-                            ->columns(2)
+                            ->columns(3)
                             ->columnSpanFull(),
                     ])
                     ->visible(fn (Settlement $record) => $record->expenses->count() > 0),

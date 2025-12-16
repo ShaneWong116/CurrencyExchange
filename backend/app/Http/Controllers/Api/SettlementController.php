@@ -167,6 +167,9 @@ class SettlementController extends Controller
                 'expenses' => 'nullable|array',
                 'expenses.*.item_name' => 'required|string|max:100',
                 'expenses.*.amount' => 'required|numeric|min:0',
+                'incomes' => 'nullable|array',
+                'incomes.*.item_name' => 'required|string|max:100',
+                'incomes.*.amount' => 'required|numeric|min:0',
                 'instant_buyout_rate' => 'nullable|numeric|min:0',
                 'notes' => 'nullable|string|max:1000',
             ], [
@@ -178,6 +181,11 @@ class SettlementController extends Controller
                 'expenses.*.amount.required' => '支出金额不能为空',
                 'expenses.*.amount.numeric' => '支出金额必须是数字',
                 'expenses.*.amount.min' => '支出金额不能为负数',
+                'incomes.*.item_name.required' => '收入项目名称不能为空',
+                'incomes.*.item_name.max' => '收入项目名称不能超过100个字符',
+                'incomes.*.amount.required' => '收入金额不能为空',
+                'incomes.*.amount.numeric' => '收入金额必须是数字',
+                'incomes.*.amount.min' => '收入金额不能为负数',
                 'instant_buyout_rate.numeric' => '即时买断汇率必须是数字',
                 'instant_buyout_rate.min' => '即时买断汇率不能为负数',
                 'notes.max' => '备注不能超过1000个字符',
@@ -211,7 +219,8 @@ class SettlementController extends Controller
                 $userId,
                 $userType,
                 $request->input('settlement_date'),  // 传入日期
-                $request->input('instant_buyout_rate')
+                $request->input('instant_buyout_rate'),
+                $request->input('incomes', [])  // 其他收入
             );
 
             // 返回结余详情

@@ -1,0 +1,61 @@
+version: '3.8'
+
+# ============================================
+# 本地开发配置 - 使用线上镜像 + 挂载本地代码
+# ============================================
+
+services:
+  backend:
+    image: docker.cnb.cool/zhlibai/currencyexchange:backend-latest
+    container_name: currency-backend-dev
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      - APP_NAME=财务管理系统
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:aF/V8DGlvZM4SmU037nzQ+hi2JJPacLptdmQhq/Tnss=
+      - APP_URL=http://localhost:8080
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/database.sqlite
+      - QUEUE_CONNECTION=sync
+      - SESSION_DRIVER=file
+      - CACHE_DRIVER=file
+      - LOG_CHANNEL=stack
+    volumes:
+      # 挂载本地 app 目录（代码实时生效）
+      - ./backend/app:/var/www/html/app
+      # 挂载本地视图文件
+      - ./backend/resources/views:/var/www/html/resources/views
+      # 挂载本地路由文件
+      - ./backend/routes:/var/www/html/routes
+      # 挂载本地数据库
+      - ./backend/database:/var/www/html/database
+      # 挂载 storage 目录
+      - ./backend/storage:/var/www/html/storage
+      # 共享 public 目录给 Nginx
+      - backend-public-dev:/var/www/html/public
+    networks:
+      - currency-network-dev
+
+  nginx:
+    image: docker.cnb.cool/zhlibai/currencyexchange:nginx-latest
+    container_name: currency-nginx-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # 共享 backend 的 public 目录（用于 Filament 静态资源）
+      - backend-public-dev:/var/www/html/public:ro
+    networks:
+      - currency-network-dev
+    depends_on:
+      - backend
+
+networks:
+  currency-network-dev:
+    driver: bridge
+
+volumes:
+  backend-public-dev:
+    driver: local

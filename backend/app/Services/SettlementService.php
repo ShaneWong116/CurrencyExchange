@@ -273,11 +273,12 @@ class SettlementService
      * @param string $userType 用户类型: 'admin' 或 'field'
      * @param string|null $settlementDate 结余日期(可选,默认今天)
      * @param float|null $instantBuyoutRate 缺少逐笔汇率时使用的即时买断汇率
+     * @param array $incomes 其他收入明细 [['item_name' => '利息', 'amount' => 50], ...]
      * @return Settlement
      */
-    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin', ?string $settlementDate = null, ?float $instantBuyoutRate = null)
+    public function execute($password, array $expenses = [], ?string $notes = null, $userId = null, $userType = 'admin', ?string $settlementDate = null, ?float $instantBuyoutRate = null, array $incomes = [])
     {
-        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType, $settlementDate, $instantBuyoutRate) {
+        return DB::transaction(function () use ($password, $expenses, $notes, $userId, $userType, $settlementDate, $instantBuyoutRate, $incomes) {
             // 1. 确定结余日期
             $settlementDate = $settlementDate ?? now()->toDateString();
             
@@ -306,7 +307,9 @@ class SettlementService
                 throw new Exception('当前没有未结余的交易，无法执行结余操作');
             }
             
-            if ($preview['settlement_rate'] <= 0) {
+            // 只有当存在入账交易时才需要验证汇率
+            // 如果只有出账交易，汇率为0是正常的（出账利润直接计算）
+            if ($preview['settlement_rate'] <= 0 && $preview['unsettled_income_count'] > 0) {
                 throw new Exception('结余汇率计算异常，请检查港币结余是否正确');
             }
 
@@ -320,8 +323,14 @@ class SettlementService
                 $otherExpensesTotal += $expense['amount'] ?? 0;
             }
             
-            // 8. 计算结余后的数据
-            $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal;
+            // 7.1 计算其他收入总额
+            $otherIncomesTotal = 0;
+            foreach ($incomes as $income) {
+                $otherIncomesTotal += $income['amount'] ?? 0;
+            }
+            
+            // 8. 计算结余后的数据（利润 - 支出 + 收入）
+            $newCapital = $preview['current_capital'] + $preview['profit'] - $otherExpensesTotal + $otherIncomesTotal;
             $newHkdBalance = $preview['current_hkd_balance'] 
                            + $preview['unsettled_income_hkd'] 
                            - $preview['unsettled_outcome_hkd'] 
@@ -340,6 +349,7 @@ class SettlementService
                 'instant_profit' => $preview['instant_profit'],
                 'instant_buyout_rate' => $instantBuyoutRate,
                 'other_expenses_total' => $otherExpensesTotal,
+                'other_incomes_total' => $otherIncomesTotal,
                 'new_capital' => $newCapital,
                 'new_hkd_balance' => $newHkdBalance,
                 'settlement_rate' => $preview['settlement_rate'],
@@ -355,8 +365,21 @@ class SettlementService
                 foreach ($expenses as $expense) {
                     SettlementExpense::create([
                         'settlement_id' => $settlement->id,
+                        'type' => SettlementExpense::TYPE_EXPENSE,
                         'item_name' => $expense['item_name'],
                         'amount' => $expense['amount'],
+                    ]);
+                }
+            }
+            
+            // 11.1 保存其他收入明细
+            if (!empty($incomes)) {
+                foreach ($incomes as $income) {
+                    SettlementExpense::create([
+                        'settlement_id' => $settlement->id,
+                        'type' => SettlementExpense::TYPE_INCOME,
+                        'item_name' => $income['item_name'],
+                        'amount' => $income['amount'],
                     ]);
                 }
             }
@@ -399,10 +422,11 @@ class SettlementService
                 $newCapital,
                 'settlement',
                 sprintf(
-                    '结算调整 - 结算号: %s, 利润: HK$ %s, 其他支出: HK$ %s',
+                    '结算调整 - 结算号: %s, 利润: HK$ %s, 其他支出: HK$ %s, 其他收入: HK$ %s',
                     $sequenceNumber,
                     number_format($preview['profit'], 2),
-                    number_format($otherExpensesTotal, 2)
+                    number_format($otherExpensesTotal, 2),
+                    number_format($otherIncomesTotal, 2)
                 ),
                 $settlement->id,
                 $userId

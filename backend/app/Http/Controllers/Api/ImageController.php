@@ -106,10 +106,21 @@ class ImageController extends Controller
         $path = $directory . '/' . $filename;
         
         // 确保目录存在
-        Storage::disk('local')->makeDirectory($directory);
+        if (!Storage::disk('local')->exists($directory)) {
+            Storage::disk('local')->makeDirectory($directory);
+        }
         
         // 保存文件
-        Storage::disk('local')->put($path, $imageData);
+        $saved = Storage::disk('local')->put($path, $imageData);
+        
+        if (!$saved) {
+            throw new \Exception('无法保存图片到文件系统: ' . $path);
+        }
+        
+        Log::info('Image saved to filesystem', [
+            'path' => $path,
+            'size' => strlen($imageData)
+        ]);
         
         return $path;
     }
@@ -153,10 +164,7 @@ class ImageController extends Controller
             // 生成 UUID
             $uuid = Str::uuid()->toString();
             
-            // 保存到文件系统
-            $filePath = $this->saveToFileSystem($result['data'], $uuid);
-            
-            // 保存到数据库（不存 Base64）
+            // 保存到数据库（使用 Base64 存储，兼容现有数据库结构）
             $imageRecord = Image::create([
                 'uuid' => $uuid,
                 'transaction_id' => $request->transaction_id,
@@ -166,8 +174,7 @@ class ImageController extends Controller
                 'mime_type' => $result['mime_type'],
                 'width' => $result['width'],
                 'height' => $result['height'],
-                'file_path' => $filePath,
-                'file_content' => null, // 不再存 Base64
+                'file_content' => base64_encode($result['data']),
             ]);
 
             return response()->json([
@@ -215,6 +222,29 @@ class ImageController extends Controller
             }
         }
 
+        return $this->returnImageResponse($image);
+    }
+    
+    /**
+     * 公开访问图片（通过 UUID）
+     * 图片通过 UUID 访问，不需要认证
+     */
+    public function showPublic(string $uuid)
+    {
+        $image = Image::where('uuid', $uuid)->first();
+        
+        if (!$image) {
+            return response()->json(['message' => '图片不存在'], 404);
+        }
+        
+        return $this->returnImageResponse($image);
+    }
+    
+    /**
+     * 返回图片响应
+     */
+    private function returnImageResponse(Image $image)
+    {
         // 获取图片数据（兼容文件系统和数据库存储）
         $imageData = $image->getImageData();
         
@@ -353,10 +383,17 @@ class ImageController extends Controller
                 // 生成 UUID
                 $uuid = Str::uuid()->toString();
                 
-                // 保存到文件系统
-                $filePath = $this->saveToFileSystem($result['data'], $uuid);
+                Log::info('Saving image to database', [
+                    'index' => $index,
+                    'uuid' => $uuid,
+                    'transaction_id' => $request->transaction_id,
+                    'draft_id' => $request->draft_id,
+                    'file_size' => strlen($result['data']),
+                    'width' => $result['width'],
+                    'height' => $result['height'],
+                ]);
                 
-                // 保存到数据库（不存 Base64）
+                // 保存到数据库（使用 Base64 存储，兼容现有数据库结构）
                 $imageRecord = Image::create([
                     'uuid' => $uuid,
                     'transaction_id' => $request->transaction_id,
@@ -366,8 +403,12 @@ class ImageController extends Controller
                     'mime_type' => $result['mime_type'],
                     'width' => $result['width'],
                     'height' => $result['height'],
-                    'file_path' => $filePath,
-                    'file_content' => null,
+                    'file_content' => base64_encode($result['data']),
+                ]);
+                
+                Log::info('Image saved successfully', [
+                    'index' => $index,
+                    'image_id' => $imageRecord->id
                 ]);
 
                 $results[] = [
@@ -384,11 +425,18 @@ class ImageController extends Controller
                 Log::error('Batch image upload failed', [
                     'index' => $index,
                     'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString()
                 ]);
                 $results[] = [
                     'status' => 'error',
-                    'message' => '图片处理失败'
+                    'message' => '图片处理失败: ' . $e->getMessage(),
+                    'debug' => [
+                        'error' => $e->getMessage(),
+                        'file' => basename($e->getFile()),
+                        'line' => $e->getLine()
+                    ]
                 ];
             }
         }

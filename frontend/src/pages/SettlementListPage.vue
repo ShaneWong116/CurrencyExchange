@@ -57,7 +57,11 @@
               </div>
               <div class="col">
                 <div class="text-caption text-grey-7">支出</div>
-                <div class="text-body2 text-weight-medium text-negative">{{ formatCurrency(settlement.other_expenses_total) }}</div>
+                <div class="text-body2 text-weight-medium text-negative">-{{ formatCurrency(settlement.other_expenses_total) }}</div>
+              </div>
+              <div class="col">
+                <div class="text-caption text-grey-7">收入</div>
+                <div class="text-body2 text-weight-medium text-positive">+{{ formatCurrency(settlement.other_incomes_total || 0) }}</div>
               </div>
             </div>
 

@@ -169,10 +169,14 @@ class ImageResource extends Resource
                     ->label('下载')
                     ->icon('heroicon-m-arrow-down-tray')
                     ->action(function (Image $record) {
-                        $content = base64_decode($record->file_content);
-                        return response($content)
-                            ->header('Content-Type', $record->mime_type)
-                            ->header('Content-Disposition', 'attachment; filename="' . $record->original_name . '"');
+                        $content = $record->getImageData();
+                        $filename = $record->original_name;
+                        
+                        return response()->streamDownload(function () use ($content) {
+                            echo $content;
+                        }, $filename, [
+                            'Content-Type' => $record->mime_type,
+                        ]);
                     }),
                 Tables\Actions\DeleteAction::make(),
             ])

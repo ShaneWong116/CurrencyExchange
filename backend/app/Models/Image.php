@@ -22,8 +22,7 @@ class Image extends Model
         'mime_type',
         'width',
         'height',
-        'file_path',      // 文件系统存储路径
-        'file_content'    // Base64 存储（兼容旧数据）
+        'file_content'    // Base64 存储
     ];
 
     protected $casts = [
@@ -53,7 +52,7 @@ class Image extends Model
 
     public function getFileUrl()
     {
-        return route('api.images.show', $this->uuid);
+        return route('api.images.show.public', ['uuid' => $this->uuid]);
     }
 
     /**

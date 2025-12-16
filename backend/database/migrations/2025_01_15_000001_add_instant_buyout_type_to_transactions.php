@@ -20,6 +20,10 @@ return new class extends Migration
         // 禁用外键约束
         DB::statement('PRAGMA foreign_keys = OFF');
         
+        // 检查旧表是否有 location_id 列（判断是否需要数据迁移）
+        $hasLocationId = Schema::hasColumn('transactions', 'location_id');
+        $hasData = DB::table('transactions')->count() > 0;
+        
         // 1. 创建临时表
         Schema::create('transactions_temp', function (Blueprint $table) {
             $table->id();
@@ -47,18 +51,31 @@ return new class extends Migration
             $table->index(['type', 'created_at']);
         });
         
-        // 2. 复制数据 - 明确指定字段顺序避免错位
-        DB::statement('
-            INSERT INTO transactions_temp 
-            (id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate, 
-             channel_id, location_id, location, notes, status, settlement_status, 
-             settlement_id, settlement_date, submit_time, transaction_label, created_at, updated_at)
-            SELECT 
-             id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate,
-             channel_id, location_id, location, notes, status, settlement_status,
-             settlement_id, settlement_date, submit_time, transaction_label, created_at, updated_at
-            FROM transactions
-        ');
+        // 2. 复制数据 - 只有在有数据且有新列时才迁移
+        if ($hasData && $hasLocationId) {
+            DB::statement('
+                INSERT INTO transactions_temp 
+                (id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate, 
+                 channel_id, location_id, location, notes, status, settlement_status, 
+                 settlement_id, settlement_date, submit_time, transaction_label, created_at, updated_at)
+                SELECT 
+                 id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate,
+                 channel_id, location_id, location, notes, status, settlement_status,
+                 settlement_id, settlement_date, submit_time, transaction_label, created_at, updated_at
+                FROM transactions
+            ');
+        } elseif ($hasData) {
+            // 旧表结构，只复制基础字段
+            DB::statement('
+                INSERT INTO transactions_temp 
+                (id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate, 
+                 channel_id, location, notes, status, submit_time, created_at, updated_at)
+                SELECT 
+                 id, uuid, user_id, type, rmb_amount, hkd_amount, exchange_rate, instant_rate,
+                 channel_id, location, notes, status, submit_time, created_at, updated_at
+                FROM transactions
+            ');
+        }
         
         // 3. 删除旧表
         Schema::dropIfExists('transactions');

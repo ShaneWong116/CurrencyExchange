@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Channel extends Model
 {
@@ -129,7 +130,7 @@ class Channel extends Model
             $balance->current_balance += $delta;
             $balance->save();
             
-            \Log::debug("Channel {$this->id} {$currency} balance adjusted", [
+            Log::debug("Channel {$this->id} {$currency} balance adjusted", [
                 'delta' => $delta,
                 'new_balance' => $balance->current_balance,
             ]);
@@ -146,7 +147,7 @@ class Channel extends Model
                 'current_balance' => $delta,
             ]);
             
-            \Log::debug("Channel {$this->id} {$currency} balance created", [
+            Log::debug("Channel {$this->id} {$currency} balance created", [
                 'delta' => $delta,
                 'new_balance' => $newBalance->current_balance,
             ]);
