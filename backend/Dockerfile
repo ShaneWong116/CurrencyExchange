@@ -44,6 +44,13 @@ COPY . /var/www/html
 RUN mkdir -p /var/www/html/database \
     && touch /var/www/html/database/database.sqlite
 
+# 创建 storage 目录结构（composer install 需要这些目录）
+RUN mkdir -p /var/www/html/storage/framework/cache/data \
+    && mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/logs \
+    && mkdir -p /var/www/html/bootstrap/cache
+
 # 清理并安装 PHP 依赖
 RUN rm -rf vendor \
     && composer install --optimize-autoloader --no-dev --no-interaction \
