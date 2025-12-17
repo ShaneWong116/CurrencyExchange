@@ -1512,7 +1512,8 @@ export default {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  overflow: hidden;
 }
 
 /* Header Row: Type + Channel + Status */
@@ -1523,7 +1524,7 @@ export default {
 }
 
 .transaction-title-row {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #1a1a1a;
   overflow: hidden;
@@ -1531,6 +1532,7 @@ export default {
   white-space: nowrap;
   flex: 1;
   margin-right: 8px;
+  min-width: 0;
 }
 
 .transaction-type {
@@ -1540,7 +1542,7 @@ export default {
 
 .transaction-divider {
   color: #d9d9d9;
-  margin: 0 4px;
+  margin: 0 2px;
 }
 
 .transaction-channel {
@@ -1560,30 +1562,39 @@ export default {
 .transaction-amounts-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   border-radius: 8px;
   margin: 4px 0;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .amount-cny-highlight {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #d32f2f;
   letter-spacing: 0.3px;
+  word-break: break-all;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .amount-hkd-highlight {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #1976d2;
   letter-spacing: 0.3px;
+  word-break: break-all;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .arrow-icon {
   color: #90a4ae;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 /* Instant Rate Row */
@@ -1682,6 +1693,30 @@ export default {
 }
 
 /* Responsive Adjustments */
+@media (max-width: 420px) {
+  .transaction-amounts-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 8px 10px;
+  }
+  
+  .transaction-amounts-row .arrow-icon {
+    display: none;
+  }
+  
+  .amount-cny-highlight,
+  .amount-hkd-highlight {
+    font-size: 14px;
+    width: 100%;
+  }
+  
+  .amount-hkd-highlight::before {
+    content: '→ ';
+    color: #90a4ae;
+  }
+}
+
 @media (max-width: 360px) {
   .transaction-amounts {
     flex-direction: column;
@@ -1695,6 +1730,26 @@ export default {
   .stat-value,
   .stat-count {
     font-size: 16px;
+  }
+  
+  .transaction-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  
+  .transaction-icon {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .amount-cny-highlight,
+  .amount-hkd-highlight {
+    font-size: 13px;
+  }
+  
+  .transaction-type,
+  .transaction-channel {
+    font-size: 13px;
   }
 }
 

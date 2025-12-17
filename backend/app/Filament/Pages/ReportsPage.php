@@ -279,6 +279,7 @@ class ReportsPage extends Page
                     $row['date'],                    // 日期
                     $row['previous_capital'],        // 本金
                     $row['profit'],                  // 利润
+                    $row['income'] ?? 0,             // 收入
                     $row['expenses'],                // 支出
                     $row['new_capital'],             // 结余本金
                     $row['rmb_balance'],             // 人民币结余

@@ -3,6 +3,15 @@ import { Quasar, Dialog, Notify, Loading } from 'quasar'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
+// 启用 vConsole 调试工具（通过 URL 参数 ?debug=1 或 localStorage）
+const urlParams = new URLSearchParams(window.location.search)
+if (urlParams.get('debug') === '1' || localStorage.getItem('enableVConsole') === 'true') {
+  localStorage.setItem('enableVConsole', 'true')
+  import('vconsole').then(({ default: VConsole }) => {
+    new VConsole()
+  })
+}
+
 // Import icon libraries (FontAwesome via extras; Material Icons 由 index.html CDN 引入)
 import '@quasar/extras/fontawesome-v6/fontawesome-v6.css'
 

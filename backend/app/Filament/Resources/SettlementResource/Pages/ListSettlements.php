@@ -85,6 +85,42 @@ class ListSettlements extends ListRecords
                                     ])
                                     ->columns(3),
                                 
+                                \Filament\Forms\Components\Section::make('其他收入')
+                                    ->schema([
+                                        \Filament\Forms\Components\Repeater::make('incomes')
+                                            ->label('收入明细')
+                                            ->schema([
+                                                \Filament\Forms\Components\TextInput::make('item_name')
+                                                    ->label('收入项目')
+                                                    ->required()
+                                                    ->maxLength(100)
+                                                    ->placeholder('如：利息收入、其他收入等')
+                                                    ->validationMessages([
+                                                        'required' => '请输入收入项目名称',
+                                                        'max' => '收入项目名称不能超过 100 个字符',
+                                                    ]),
+                                                
+                                                \Filament\Forms\Components\TextInput::make('amount')
+                                                    ->label('金额 (HKD)')
+                                                    ->required()
+                                                    ->numeric()
+                                                    ->minValue(0)
+                                                    ->suffix('HKD')
+                                                    ->default(0)
+                                                    ->validationMessages([
+                                                        'required' => '请输入收入金额',
+                                                        'numeric' => '收入金额必须是数字',
+                                                        'min' => '收入金额不能小于 0',
+                                                    ]),
+                                            ])
+                                            ->columns(2)
+                                            ->addActionLabel('添加收入项目')
+                                            ->collapsible()
+                                            ->defaultItems(0)
+                                            ->columnSpanFull()
+                                            ->live(),
+                                    ]),
+                                
                                 \Filament\Forms\Components\Section::make('其他支出')
                                     ->schema([
                                         \Filament\Forms\Components\Repeater::make('expenses')
@@ -133,16 +169,18 @@ class ListSettlements extends ListRecords
                     \Filament\Forms\Components\Wizard\Step::make('确认结余')
                         ->schema(function (SettlementService $settlementService, callable $get) {
                             $preview = $settlementService->getPreview();
+                            $incomes = $get('incomes') ?? [];
                             $expenses = $get('expenses') ?? [];
                             $recommendation = $settlementService->getRecommendedSettlementDate();
                             $usedDates = $settlementService->getUsedSettlementDates();
                             
-                            // 计算总支出
+                            // 计算总收入和总支出
+                            $totalIncomes = collect($incomes)->sum('amount');
                             $totalExpenses = collect($expenses)->sum('amount');
                             
-                            // 计算扣除支出后的本金和利润
-                            $finalCapital = $preview['expected_new_capital'] - $totalExpenses;
-                            $finalProfit = $preview['profit'] - $totalExpenses;
+                            // 计算扣除支出后的本金和利润（利润 + 收入 - 支出）
+                            $finalCapital = $preview['expected_new_capital'] + $totalIncomes - $totalExpenses;
+                            $finalProfit = $preview['profit'] + $totalIncomes - $totalExpenses;
                             
                             return [
                                 \Filament\Forms\Components\Section::make('结余前状态')
@@ -174,7 +212,7 @@ class ListSettlements extends ListRecords
                                                              number_format($preview['settlement_rate'], 3) . '</span>')),
                                         
                                         \Filament\Forms\Components\Placeholder::make('outgoing_profit_confirm')
-                                            ->label('出账利润（未扣除支出）')
+                                            ->label('出账利润')
                                             ->content(function () use ($preview) {
                                                 $profit = $preview['outgoing_profit'];
                                                 $color = $profit >= 0 ? 'success' : 'danger';
@@ -183,7 +221,7 @@ class ListSettlements extends ListRecords
                                             }),
                                         
                                         \Filament\Forms\Components\Placeholder::make('instant_profit_confirm')
-                                            ->label('即时买断利润（未扣除支出）')
+                                            ->label('即时买断利润')
                                             ->content(function () use ($preview) {
                                                 $profit = $preview['instant_profit'];
                                                 $color = $profit >= 0 ? 'success' : 'danger';
@@ -191,20 +229,25 @@ class ListSettlements extends ListRecords
                                                        number_format($profit, 0) . ' HKD</span>');
                                             }),
                                         
+                                        \Filament\Forms\Components\Placeholder::make('total_incomes_display')
+                                            ->label('其他收入合计')
+                                            ->content(fn () => new HtmlString('<span class="text-primary-600 font-bold text-lg">+ ' . 
+                                                             number_format($totalIncomes, 2) . ' HKD</span>')),
+                                        
                                         \Filament\Forms\Components\Placeholder::make('total_expenses_display')
                                             ->label('其他支出合计')
                                             ->content(fn () => new HtmlString('<span class="text-danger-600 font-bold text-lg">- ' . 
                                                              number_format($totalExpenses, 2) . ' HKD</span>')),
                                         
                                         \Filament\Forms\Components\Placeholder::make('final_profit_display')
-                                            ->label('最终利润（扣除支出后）')
+                                            ->label('最终利润')
                                             ->content(function () use ($finalProfit) {
                                                 $color = $finalProfit >= 0 ? 'success' : 'danger';
                                                 return new HtmlString("<span class='text-{$color}-600 font-bold text-xl'>" . 
                                                        number_format($finalProfit, 2) . ' HKD</span>');
                                             }),
                                     ])
-                                    ->columns(5)
+                                    ->columns(6)
                                     ->columnSpanFull(),
                                 
                                 \Filament\Forms\Components\Section::make('结余后状态')
@@ -233,6 +276,30 @@ class ListSettlements extends ListRecords
                                     ->columns(3)
                                     ->columnSpanFull(),
                                 
+                                \Filament\Forms\Components\Section::make('收入明细')
+                                    ->schema([
+                                        \Filament\Forms\Components\Placeholder::make('incomes_detail')
+                                            ->label('')
+                                            ->content(function () use ($incomes) {
+                                                if (empty($incomes)) {
+                                                    return '无其他收入';
+                                                }
+                                                
+                                                $html = '<div class="space-y-2">';
+                                                foreach ($incomes as $income) {
+                                                    $html .= '<div class="flex justify-between items-center border-b pb-2">';
+                                                    $html .= '<span class="font-medium">' . htmlspecialchars($income['item_name']) . '</span>';
+                                                    $html .= '<span class="text-primary-600">' . number_format($income['amount'], 2) . ' HKD</span>';
+                                                    $html .= '</div>';
+                                                }
+                                                $html .= '</div>';
+                                                return new HtmlString($html);
+                                            })
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(fn () => empty($incomes)),
+                                
                                 \Filament\Forms\Components\Section::make('支出明细')
                                     ->schema([
                                         \Filament\Forms\Components\Placeholder::make('expenses_detail')
@@ -246,7 +313,7 @@ class ListSettlements extends ListRecords
                                                 foreach ($expenses as $expense) {
                                                     $html .= '<div class="flex justify-between items-center border-b pb-2">';
                                                     $html .= '<span class="font-medium">' . htmlspecialchars($expense['item_name']) . '</span>';
-                                                    $html .= '<span class="text-gray-600">' . number_format($expense['amount'], 2) . ' HKD</span>';
+                                                    $html .= '<span class="text-danger-600">' . number_format($expense['amount'], 2) . ' HKD</span>';
                                                     $html .= '</div>';
                                                 }
                                                 $html .= '</div>';
@@ -343,7 +410,9 @@ class ListSettlements extends ListRecords
                             $data['notes'] ?? null,
                             $userId,
                             $userType,
-                            $data['settlement_date'] ?? null  // 传入选择的日期
+                            $data['settlement_date'] ?? null,  // 传入选择的日期
+                            null,  // instantBuyoutRate
+                            $data['incomes'] ?? []  // 传入收入明细
                         );
                         
                         Notification::make()

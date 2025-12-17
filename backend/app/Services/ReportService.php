@@ -224,6 +224,8 @@ class ReportService
                 'profit' => null,
                 'outgoing_profit' => null,
                 'instant_profit' => null,
+                'income' => null,
+                'income_items' => [],
                 'expenses' => null,
                 'expense_items' => [],
                 'new_capital' => null,
@@ -249,6 +251,9 @@ class ReportService
             $dateString = $date->format('Y.n.j');
             
             if (isset($dailyData[$dateString])) {
+                // 获取收入明细（type='income' 的支出项）
+                $incomeItems = $settlement->expenses->filter(fn($e) => $e->type === 'income');
+                
                 $dailyData[$dateString] = [
                     'date' => $dateString,
                     'full_date' => $settlement->settlement_date,
@@ -257,8 +262,13 @@ class ReportService
                     'profit' => (float) ($settlement->outgoing_profit + $settlement->instant_profit),
                     'outgoing_profit' => (float) $settlement->outgoing_profit,
                     'instant_profit' => (float) $settlement->instant_profit,
+                    'income' => (float) $settlement->other_incomes_total,
+                    'income_items' => $incomeItems->map(fn($e) => [
+                        'name' => $e->item_name,
+                        'amount' => (float) $e->amount,
+                    ])->toArray(),
                     'expenses' => (float) $settlement->other_expenses_total,
-                    'expense_items' => $settlement->expenses->map(fn($e) => [
+                    'expense_items' => $settlement->expenses->filter(fn($e) => $e->type !== 'income')->map(fn($e) => [
                         'name' => $e->item_name,
                         'amount' => (float) $e->amount,
                     ])->toArray(),
@@ -273,13 +283,24 @@ class ReportService
 
         // 计算汇总数据
         $totalProfit = 0;
+        $totalIncome = 0;
         $totalExpenses = 0;
+        $incomeBreakdown = [];
         $expenseBreakdown = [];
 
         foreach ($dailyData as $day) {
             if ($day['has_settlement']) {
                 $totalProfit += $day['profit'] ?? 0;
+                $totalIncome += $day['income'] ?? 0;
                 $totalExpenses += $day['expenses'] ?? 0;
+                
+                // 汇总收入明细
+                foreach ($day['income_items'] ?? [] as $item) {
+                    if (!isset($incomeBreakdown[$item['name']])) {
+                        $incomeBreakdown[$item['name']] = 0;
+                    }
+                    $incomeBreakdown[$item['name']] += $item['amount'];
+                }
                 
                 // 汇总支出明细
                 foreach ($day['expense_items'] as $item) {
@@ -291,7 +312,7 @@ class ReportService
             }
         }
 
-        $netProfit = $totalProfit - $totalExpenses;
+        $netProfit = $totalProfit + $totalIncome - $totalExpenses;
 
         return [
             'year' => $year,
@@ -299,9 +320,11 @@ class ReportService
             'days_in_month' => $daysInMonth,
             'daily_data' => array_values($dailyData),
             'summary' => [
-                'total_income' => round($totalProfit, 2),
+                'total_profit' => round($totalProfit, 2),
+                'total_income' => round($totalIncome, 2),
                 'total_expenses' => round($totalExpenses, 2),
                 'net_profit' => round($netProfit, 2),
+                'income_breakdown' => $incomeBreakdown,
                 'expense_breakdown' => $expenseBreakdown,
             ],
         ];

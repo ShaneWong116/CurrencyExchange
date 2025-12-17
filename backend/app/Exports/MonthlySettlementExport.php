@@ -24,24 +24,24 @@ class MonthlySettlementExport implements FromArray, WithHeadings, WithStyles, Sh
 
     public function headings(): array
     {
-        return ['日期', '本金', '利润', '支出', '结余本金', '人民币结余', '港币结余', '备注'];
+        return ['日期', '本金', '利润', '收入', '支出', '结余本金', '人民币结余', '港币结余', '备注'];
     }
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->getStyle('A1:H1')->applyFromArray([
+        $sheet->getStyle('A1:I1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => '366092']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ]);
 
-        $sheet->getStyle('A2:H' . $sheet->getHighestRow())->applyFromArray([
+        $sheet->getStyle('A2:I' . $sheet->getHighestRow())->applyFromArray([
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
         ]);
 
-        $sheet->getStyle('B:G')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('B:H')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         return [];
     }
 }

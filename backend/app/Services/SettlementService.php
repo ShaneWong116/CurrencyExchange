@@ -282,9 +282,11 @@ class SettlementService
             // 1. 确定结余日期
             $settlementDate = $settlementDate ?? now()->toDateString();
             
-            // 2. 验证日期不能早于今天
-            if (Carbon::parse($settlementDate)->isBefore(now()->startOfDay())) {
-                throw new Exception('该日期不可用，请选择其他可用日期');
+            // 2. 验证日期不能早于今天（允许今天及以后的日期）
+            $selectedDate = Carbon::parse($settlementDate)->startOfDay();
+            $today = Carbon::today();
+            if ($selectedDate->lt($today)) {
+                throw new Exception('该日期不可用，请选择今天或之后的日期');
             }
             
             // 3. 检查该日期是否已有结余(给予警告但允许,因为可能需要一天多次结余)

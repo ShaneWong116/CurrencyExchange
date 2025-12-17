@@ -59,17 +59,47 @@
             @if ($monthlyData)
                 {{-- 汇总统计卡片 --}}
                 <div class="flex gap-4 mb-6">
-                    {{-- 总收入卡片 --}}
+                    {{-- 总利润卡片 --}}
                     <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总收入（利润）</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总利润</span>
                             <svg class="w-5 h-5" style="color: #16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                             </svg>
                         </div>
                         <div class="text-3xl font-bold tabular-nums" style="color: #16a34a;">
-                            ¥{{ number_format($monthlyData['summary']['total_income'], 2) }}
+                            ¥{{ number_format($monthlyData['summary']['total_profit'], 2) }}
                         </div>
+                    </div>
+
+                    {{-- 总收入卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总收入</span>
+                            <svg class="w-5 h-5" style="color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                        @if (count($monthlyData['summary']['income_breakdown'] ?? []) > 0)
+                            <details class="cursor-pointer group">
+                                <summary class="text-3xl font-bold tabular-nums list-none" style="color: #2563eb;">
+                                    ¥{{ number_format($monthlyData['summary']['total_income'], 2) }}
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-2 opacity-60 group-hover:opacity-100">▼ 点击查看明细</span>
+                                </summary>
+                                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                                    @foreach ($monthlyData['summary']['income_breakdown'] as $name => $amount)
+                                        <div class="flex justify-between text-xs text-gray-700 dark:text-gray-300">
+                                            <span>{{ $name }}</span>
+                                            <span class="font-medium tabular-nums">¥{{ number_format($amount, 2) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </details>
+                        @else
+                            <div class="text-3xl font-bold tabular-nums" style="color: #2563eb;">
+                                ¥{{ number_format($monthlyData['summary']['total_income'], 2) }}
+                            </div>
+                        @endif
                     </div>
 
                     {{-- 总支出卡片 --}}
@@ -140,6 +170,7 @@
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">日期</th>
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">本金</th>
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">利润</th>
+                                    <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">收入</th>
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">支出</th>
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">结余本金</th>
                                     <th style="position: sticky; top: 0; background-color: #f3f4f6; padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 600; color: #374151; text-transform: uppercase; white-space: nowrap; border-bottom: 2px solid #d1d5db;">人民币结余</th>
@@ -164,6 +195,9 @@
                                                 </td>
                                                 <td class="px-4 py-2.5 text-sm font-medium cursor-pointer text-right tabular-nums" style="color: #16a34a;" @click="expandedRows[{{ $loop_index }}] = !expandedRows[{{ $loop_index }}]">
                                                     +{{ number_format($day['profit'], 0) }}
+                                                </td>
+                                                <td class="px-4 py-2.5 text-sm font-medium cursor-pointer text-right tabular-nums" style="color: #2563eb;" @click="expandedRows[{{ $loop_index }}] = !expandedRows[{{ $loop_index }}]">
+                                                    {{ ($day['income'] ?? 0) > 0 ? '+' : '' }}{{ number_format($day['income'] ?? 0, 0) }}
                                                 </td>
                                                 <td class="px-4 py-2.5 text-sm font-medium cursor-pointer text-right tabular-nums" style="color: #dc2626;" @click="expandedRows[{{ $loop_index }}] = !expandedRows[{{ $loop_index }}]">
                                                     -{{ number_format($day['expenses'], 0) }}
@@ -191,7 +225,7 @@
                                                 x-transition:leave-end="opacity-0 transform scale-95"
                                                 style="display: none;"
                                                 class="{{ $loop_index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-850' }}">
-                                            <td colspan="8" class="px-4 py-3 bg-blue-50 dark:bg-gray-800 border-t border-blue-100 dark:border-gray-700">
+                                            <td colspan="9" class="px-4 py-3 bg-blue-50 dark:bg-gray-800 border-t border-blue-100 dark:border-gray-700">
                                                 <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                                                     <div class="flex justify-between">
                                                         <span class="font-medium text-gray-700 dark:text-gray-300">出账利润：</span>
@@ -201,6 +235,19 @@
                                                         <span class="font-medium text-gray-700 dark:text-gray-300">即时买断利润：</span>
                                                         <span class="font-medium tabular-nums" style="color: #16a34a;">¥{{ number_format($day['instant_profit'], 2) }}</span>
                                                     </div>
+                                                    @if (count($day['income_items'] ?? []) > 0)
+                                                        <div class="col-span-2 mt-2 pt-2 border-t border-blue-200 dark:border-gray-700">
+                                                            <span class="font-medium text-gray-700 dark:text-gray-300">收入明细：</span>
+                                                            <div class="mt-1 space-y-1 ml-4">
+                                                                @foreach ($day['income_items'] as $item)
+                                                                    <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                                                                        <span>• {{ $item['name'] }}</span>
+                                                                        <span class="font-medium tabular-nums" style="color: #2563eb;">¥{{ number_format($item['amount'], 2) }}</span>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                     @if (count($day['expense_items']) > 0)
                                                         <div class="col-span-2 mt-2 pt-2 border-t border-blue-200 dark:border-gray-700">
                                                             <span class="font-medium text-gray-700 dark:text-gray-300">支出明细：</span>
@@ -243,6 +290,7 @@
                                         {{-- 未结算行 - 灰色显示 --}}
                                         <tr class="{{ $loop_index % 2 === 0 ? 'bg-gray-100 dark:bg-gray-800/30' : 'bg-gray-50 dark:bg-gray-800/50' }}">
                                             <td class="px-4 py-2.5 text-sm font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ $day['date'] }}</td>
+                                            <td class="px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 text-right">-</td>
                                             <td class="px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 text-right">-</td>
                                             <td class="px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 text-right">-</td>
                                             <td class="px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 text-right">-</td>

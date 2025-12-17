@@ -95,7 +95,7 @@
               @drop.prevent="onDrop"
             >
               <q-icon name="add_a_photo" size="32px" class="q-mr-sm" />
-              <div>点击或拖拽图片到此处</div>
+              <div>点击或拖拽图片到此处（最多{{ MAX_IMAGES }}张）</div>
             </div>
             <input
               ref="fileInputRef"
@@ -106,13 +106,12 @@
               @change="onFileSelect"
             />
           </div>
-          <div>
-            <q-item v-for="(file, idx) in images" :key="file.name + ':' + idx" class="q-my-xs bg-grey-2 rounded-borders">
-              <q-item-section class="text-body2 ellipsis">{{ file.name }}</q-item-section>
-              <q-item-section side>
-                <q-btn dense flat color="negative" icon="close" @click.stop="removeImage(idx)" />
-              </q-item-section>
-            </q-item>
+          <div v-if="images.length > 0" class="image-list">
+            <div v-for="(file, idx) in images" :key="idx" class="image-item">
+              <img :src="getPreviewUrl(file)" class="image-thumb" />
+              <span class="image-name">{{ file.name }}</span>
+              <q-btn dense flat round color="negative" icon="close" size="sm" @click.stop="removeImage(idx)" />
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -180,6 +179,7 @@ const instantRateDisplay = ref('')
 
 const editingDraftRef = ref(null) // 保存正在编辑的草稿对象（云端或本地）
 const images = ref([])
+const previewUrls = ref(new Map()) // 缓存预览URL
 const fileInputRef = ref(null)
 const isSavingDraft = ref(false)
 const isSubmitting = ref(false)
@@ -321,12 +321,26 @@ const toBackendPayload = () => {
   
   return payload
 }
+const MAX_IMAGES = 5 // 最多上传5张图片
+
 const addFiles = (files) => {
-  const list = Array.from(files || [])
-    .filter(f => f && f.type && f.type.startsWith('image/'))
-  list.forEach(file => {
-    images.value.push(file)
-  })
+  const fileList = files ? Array.from(files) : []
+  const validFiles = fileList.filter(f => f && f.type && f.type.startsWith('image/'))
+  
+  if (validFiles.length === 0) return
+  
+  const remaining = MAX_IMAGES - images.value.length
+  if (remaining <= 0) {
+    Notify.create({ type: 'warning', message: `最多只能上传${MAX_IMAGES}张图片`, position: 'top' })
+    return
+  }
+  
+  const filesToAdd = validFiles.slice(0, remaining)
+  if (filesToAdd.length < validFiles.length) {
+    Notify.create({ type: 'warning', message: `已达到上限，只添加了${filesToAdd.length}张图片`, position: 'top' })
+  }
+  
+  images.value = [...images.value, ...filesToAdd]
 }
 
 const onFileSelect = (evt) => {
@@ -342,32 +356,63 @@ const openFileDialog = () => {
   fileInputRef.value?.click()
 }
 
+// 获取图片预览URL
+const getPreviewUrl = (file) => {
+  if (!previewUrls.value.has(file)) {
+    previewUrls.value.set(file, URL.createObjectURL(file))
+  }
+  return previewUrls.value.get(file)
+}
+
 const removeImage = (index) => {
+  const file = images.value[index]
+  if (previewUrls.value.has(file)) {
+    URL.revokeObjectURL(previewUrls.value.get(file))
+    previewUrls.value.delete(file)
+  }
   images.value.splice(index, 1)
 }
 
-// 将文件转换为 Base64
-const fileToBase64 = (file) => {
+// 压缩图片并转换为 Base64
+const compressAndConvert = (file, maxWidth = 1200, quality = 0.8) => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      // 去掉 data:image/xxx;base64, 前缀
-      const base64 = reader.result.split(',')[1]
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      // 如果图片宽度超过maxWidth，按比例缩小
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width)
+        width = maxWidth
+      }
+      
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      // 转为 base64，去掉前缀
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      const base64 = dataUrl.split(',')[1]
+      URL.revokeObjectURL(img.src)
       resolve(base64)
     }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('图片加载失败'))
+    }
+    img.src = URL.createObjectURL(file)
   })
 }
 
-// 上传图片到服务器
+// 上传图片到服务器（压缩后上传）
 const uploadImages = async (transactionId = null, draftId = null) => {
   if (images.value.length === 0) return { success: true }
   
   try {
-    // 将所有文件转为 Base64
+    // 压缩并转为 Base64
     const base64Images = await Promise.all(
-      images.value.map(file => fileToBase64(file))
+      images.value.map(file => compressAndConvert(file))
     )
     
     // 调用批量上传 API
@@ -520,7 +565,11 @@ onMounted(async () => {
   loadDraftIfEditing()
 })
 
-onBeforeUnmount(() => {})
+onBeforeUnmount(() => {
+  // 清理预览URL
+  previewUrls.value.forEach(url => URL.revokeObjectURL(url))
+  previewUrls.value.clear()
+})
 </script>
 
 <style scoped>
@@ -639,18 +688,38 @@ onBeforeUnmount(() => {})
   transform: scale(1.1);
 }
 
-/* Image Items */
-.q-item.bg-grey-2 {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
-  border-radius: 10px !important;
-  border: 1px solid #f0f0f0;
-  transition: all 0.2s ease;
+/* Image List */
+.image-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.q-item.bg-grey-2:hover {
-  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%) !important;
-  border-color: #90caf9;
-  transform: translateX(4px);
+.image-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.image-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.image-name {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Action Buttons */
