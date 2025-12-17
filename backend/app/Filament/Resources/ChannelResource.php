@@ -37,8 +37,7 @@ class ChannelResource extends Resource
                             ->label('渠道代码')
                             ->required()
                             ->unique(Channel::class, 'code', ignoreRecord: true)
-                            ->maxLength(50)
-                            ->alphaDash(),
+                            ->maxLength(50),
                             
                         Forms\Components\TextInput::make('label')
                             ->label('标签')
