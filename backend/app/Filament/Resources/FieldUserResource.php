@@ -41,9 +41,19 @@ class FieldUserResource extends Resource
 
                         Forms\Components\Select::make('location_id')
                             ->label('所属地点')
-                            ->options(Location::where('status', 'active')->pluck('name', 'id'))
+                            ->options(function () {
+                                $locations = Location::where('status', 'active')->pluck('name', 'id');
+                                return $locations->isEmpty() ? [] : $locations;
+                            })
                             ->searchable()
-                            ->required(),
+                            ->required()
+                            ->validationMessages([
+                                'required' => '请先在「地点管理」中添加地点后再创建外勤人员',
+                            ])
+                            ->helperText(function () {
+                                $hasLocations = Location::where('status', 'active')->exists();
+                                return $hasLocations ? null : '⚠️ 暂无可用地点，请先前往「基础配置 > 地点」添加地点';
+                            }),
                             
                         Forms\Components\TextInput::make('password')
                             ->label('密码')
