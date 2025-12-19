@@ -19,24 +19,28 @@ return new class extends Migration
         });
 
         // field_users 增加 location_id
-        Schema::table('field_users', function (Blueprint $table) {
-            $table->foreignId('location_id')
-                ->nullable()
-                ->after('name')
-                ->constrained('locations')
-                ->nullOnDelete()
-                ->comment('所属地点');
-        });
+        if (!Schema::hasColumn('field_users', 'location_id')) {
+            Schema::table('field_users', function (Blueprint $table) {
+                $table->foreignId('location_id')
+                    ->nullable()
+                    ->after('name')
+                    ->constrained('locations')
+                    ->nullOnDelete()
+                    ->comment('所属地点');
+            });
+        }
 
         // transactions 增加 location_id（保留原有 location 文本以兼容历史数据）
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->foreignId('location_id')
-                ->nullable()
-                ->after('channel_id')
-                ->constrained('locations')
-                ->nullOnDelete()
-                ->comment('地点ID');
-        });
+        if (!Schema::hasColumn('transactions', 'location_id')) {
+            Schema::table('transactions', function (Blueprint $table) {
+                $table->foreignId('location_id')
+                    ->nullable()
+                    ->after('channel_id')
+                    ->constrained('locations')
+                    ->nullOnDelete()
+                    ->comment('地点ID');
+            });
+        }
     }
 
     public function down()

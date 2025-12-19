@@ -33,6 +33,10 @@ services:
       - ./backend/database:/var/www/html/database
       # 挂载 storage 目录
       - ./backend/storage:/var/www/html/storage
+      # 挂载测试目录
+      - ./backend/tests:/var/www/html/tests
+      # 挂载 phpunit.xml
+      - ./backend/phpunit.xml:/var/www/html/phpunit.xml
       # 共享 public 目录给 Nginx
       - backend-public-dev:/var/www/html/public
     networks:
