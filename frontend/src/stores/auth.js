@@ -266,7 +266,7 @@ export const useAuthStore = defineStore('auth', {
 
     startAutoLogoutCheck() {
       const checkInterval = 60000 // 每分钟检查一次
-      const autoLogoutTime = 15 * 60 * 1000 // 15分钟
+      const autoLogoutTime = 10 * 60 * 1000 // 10分钟
       
       const check = () => {
         // 如果已经不是认证状态，停止检查

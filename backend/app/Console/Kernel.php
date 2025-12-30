@@ -15,18 +15,6 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // 每天凌晨0点计算余额
-        $schedule->command('balance:calculate-daily')
-            ->daily()
-            ->at('00:00')
-            ->runInBackground();
-        
-        // 每天凌晨0点清理草稿
-        $schedule->command('drafts:cleanup')
-            ->daily()
-            ->at('00:00')
-            ->runInBackground();
-        
         // 每小时清理过期Token
         $schedule->call(function () {
             \DB::table('personal_access_tokens')
