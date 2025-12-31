@@ -71,11 +71,10 @@ class CreateBalanceAdjustment extends CreateRecord
                 $record->before_amount
             );
             
-            // 对于人民币，getRmbBalance() 读取的是 initial_amount（基础余额）
-            // 所以需要同时更新 initial_amount 才能让余额显示正确
-            if ($record->currency === 'RMB') {
-                $balance->initial_amount = $record->after_amount;
-            }
+            // 手动调整渠道余额时，需要更新 initial_amount
+            // 这样结余计算时的期初余额才能正确反映手动调整
+            // 注意：这会影响当天所有交易的余额计算基准
+            $balance->initial_amount = $record->after_amount;
             $balance->current_balance = $record->after_amount;
             $balance->save();
         } elseif ($record->adjustment_category === 'hkd_balance') {
