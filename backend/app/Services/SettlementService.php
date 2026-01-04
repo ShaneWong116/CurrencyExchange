@@ -388,22 +388,34 @@ class SettlementService
             
             // 12. 固化各渠道人民币余额到 ChannelBalance 的 initial_amount
             // 这一步必须在标记交易为已结算之前执行，因为 getRmbBalance() 依赖未结算交易
-            $today = Carbon::today();
+            // 注意：不再使用日期作为 key，而是直接更新最新的记录
             foreach ($preview['channel_rmb_balances'] as $channelBalance) {
-                $balance = ChannelBalance::firstOrCreate([
-                    'channel_id' => $channelBalance['id'],
-                    'currency' => 'RMB',
-                    'date' => $today,
-                ], [
-                    'initial_amount' => 0,
-                    'income_amount' => 0,
-                    'outcome_amount' => 0,
-                    'current_balance' => 0,
-                ]);
+                // 获取该渠道最新的 RMB 余额记录
+                $balance = ChannelBalance::where('channel_id', $channelBalance['id'])
+                    ->where('currency', 'RMB')
+                    ->orderBy('date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                
+                if (!$balance) {
+                    // 如果没有记录，创建一个新的（不依赖日期）
+                    $balance = ChannelBalance::create([
+                        'channel_id' => $channelBalance['id'],
+                        'currency' => 'RMB',
+                        'date' => now()->toDateString(),
+                        'initial_amount' => 0,
+                        'income_amount' => 0,
+                        'outcome_amount' => 0,
+                        'current_balance' => 0,
+                    ]);
+                }
                 
                 // 将当前余额固化为新的基础余额
                 $balance->initial_amount = $channelBalance['rmb_balance'];
                 $balance->current_balance = $channelBalance['rmb_balance'];
+                // 重置交易统计（因为交易已结算）
+                $balance->income_amount = 0;
+                $balance->outcome_amount = 0;
                 $balance->save();
                 
                 Log::info("Settlement: Channel {$channelBalance['id']} RMB balance fixed to {$channelBalance['rmb_balance']}");

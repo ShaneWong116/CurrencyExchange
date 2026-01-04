@@ -64,16 +64,28 @@ class CreateBalanceAdjustment extends CreateRecord
         
         // 根据调整分类执行不同的后续操作
         if ($record->adjustment_category === 'channel') {
-            // 更新渠道余额
-            $balance = ChannelBalance::getOrCreateTodayBalance(
-                $record->channel_id, 
-                $record->currency, 
-                $record->before_amount
-            );
+            // 更新最新余额记录（不再按日期创建新记录）
+            $balance = ChannelBalance::where('channel_id', $record->channel_id)
+                ->where('currency', $record->currency)
+                ->orderBy('date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            
+            if (!$balance) {
+                // 如果没有记录，创建一个新的
+                $balance = ChannelBalance::create([
+                    'channel_id' => $record->channel_id,
+                    'currency' => $record->currency,
+                    'date' => now()->toDateString(),
+                    'initial_amount' => 0,
+                    'income_amount' => 0,
+                    'outcome_amount' => 0,
+                    'current_balance' => 0,
+                ]);
+            }
             
             // 手动调整渠道余额时，需要更新 initial_amount
             // 这样结余计算时的期初余额才能正确反映手动调整
-            // 注意：这会影响当天所有交易的余额计算基准
             $balance->initial_amount = $record->after_amount;
             $balance->current_balance = $record->after_amount;
             $balance->save();

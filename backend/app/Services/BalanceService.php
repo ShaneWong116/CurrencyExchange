@@ -134,9 +134,26 @@ class BalanceService
                 'reason' => $reason,
             ]);
             
-            // 更新今日余额
-            $today = Carbon::today();
-            $balance = ChannelBalance::getOrCreateTodayBalance($channelId, $currency, $currentBalance);
+            // 更新最新余额记录（不再按日期创建新记录）
+            $balance = ChannelBalance::where('channel_id', $channelId)
+                ->where('currency', $currency)
+                ->orderBy('date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            
+            if (!$balance) {
+                // 如果没有记录，创建一个新的
+                $balance = ChannelBalance::create([
+                    'channel_id' => $channelId,
+                    'currency' => $currency,
+                    'date' => now()->toDateString(),
+                    'initial_amount' => 0,
+                    'income_amount' => 0,
+                    'outcome_amount' => 0,
+                    'current_balance' => 0,
+                ]);
+            }
+            
             $balance->current_balance = $adjustment->after_amount;
             // 同步更新 initial_amount，确保期初余额反映手动调整
             $balance->initial_amount += $adjustmentAmount;
