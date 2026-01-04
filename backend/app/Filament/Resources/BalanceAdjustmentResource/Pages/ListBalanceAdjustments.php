@@ -23,6 +23,10 @@ class ListBalanceAdjustments extends ListRecords
     
     public ?string $activeTab = 'channel';
     
+    protected $queryString = [
+        'activeTab' => ['except' => 'channel'],
+    ];
+    
     public function getDefaultActiveTab(): string|int|null
     {
         return 'channel';
@@ -48,10 +52,21 @@ class ListBalanceAdjustments extends ListRecords
         ];
     }
     
+    /**
+     * 获取当前激活的标签页
+     * 优先从 URL 参数获取，确保标签页切换时状态正确
+     */
+    protected function getCurrentTab(): string
+    {
+        return request()->query('activeTab', $this->activeTab ?? 'channel');
+    }
+    
     public function table(Table $table): Table
     {
+        $currentTab = $this->getCurrentTab();
+        
         // 如果是渠道余额标签页，显示渠道列表
-        if ($this->activeTab === 'channel') {
+        if ($currentTab === 'channel') {
             return $table
                 ->query(Channel::query())
                 ->columns([
@@ -262,7 +277,7 @@ class ListBalanceAdjustments extends ListRecords
                             ->send();
                     }
                 })
-                ->visible(fn () => $this->activeTab === 'capital' && ($u = auth()->user()) instanceof \App\Models\User && ($u->isAdmin() || $u->isFinance())),
+                ->visible(fn () => $this->getCurrentTab() === 'capital' && ($u = auth()->user()) instanceof \App\Models\User && ($u->isAdmin() || $u->isFinance())),
             
             // 港币余额调整按钮
             Actions\Action::make('adjust_hkd_balance')
@@ -364,7 +379,7 @@ class ListBalanceAdjustments extends ListRecords
                             ->send();
                     }
                 })
-                ->visible(fn () => $this->activeTab === 'hkd_balance' && ($u = auth()->user()) instanceof \App\Models\User && ($u->isAdmin() || $u->isFinance())),
+                ->visible(fn () => $this->getCurrentTab() === 'hkd_balance' && ($u = auth()->user()) instanceof \App\Models\User && ($u->isAdmin() || $u->isFinance())),
             
             // 创建渠道余额调整
             Actions\CreateAction::make()
@@ -372,7 +387,7 @@ class ListBalanceAdjustments extends ListRecords
                 ->icon('heroicon-o-scale')
                 ->color('success')
                 ->url(fn (): string => BalanceAdjustmentResource::getUrl('create', ['adjustment_category' => 'channel']))
-                ->visible(fn () => $this->activeTab === 'channel' && \Illuminate\Support\Facades\Gate::allows('create', BalanceAdjustment::class)),
+                ->visible(fn () => $this->getCurrentTab() === 'channel' && \Illuminate\Support\Facades\Gate::allows('create', BalanceAdjustment::class)),
         ];
     }
 
