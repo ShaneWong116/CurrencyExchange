@@ -21,15 +21,38 @@ class ListBalanceAdjustments extends ListRecords
 {
     protected static string $resource = BalanceAdjustmentResource::class;
     
-    public ?string $activeTab = 'channel';
+    public ?string $activeTab = null;
     
     protected $queryString = [
         'activeTab' => ['except' => 'channel'],
     ];
     
+    public function mount(): void
+    {
+        parent::mount();
+        
+        // 从 URL 参数初始化 activeTab，确保首次加载时状态正确
+        $this->activeTab = request()->query('activeTab', 'channel');
+    }
+    
     public function getDefaultActiveTab(): string|int|null
     {
-        return 'channel';
+        return $this->activeTab ?? 'channel';
+    }
+    
+    /**
+     * 当标签页变化时，强制重新加载页面以确保表格正确渲染
+     * 因为 channel 标签页使用完全不同的查询（Channel 模型而非 BalanceAdjustment）
+     */
+    public function updatedActiveTab(): void
+    {
+        // 强制重定向以确保表格正确渲染
+        // 注意：channel 是默认值，URL 中不需要 activeTab 参数
+        if ($this->activeTab === 'channel' || $this->activeTab === null) {
+            $this->redirect(static::getUrl());
+        } else {
+            $this->redirect(static::getUrl(['activeTab' => $this->activeTab]));
+        }
     }
     
     public function getTabs(): array
@@ -42,8 +65,9 @@ class ListBalanceAdjustments extends ListRecords
                 
             'channel' => Tab::make('渠道余额')
                 ->icon('heroicon-o-scale')
-                ->badge(Channel::count()),
-                // 不使用 modifyQueryUsing，因为渠道标签页使用不同的查询
+                ->badge(Channel::count())
+                // 返回空结果集，因为 table() 方法会完全覆盖查询使用 Channel 模型
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('1 = 0')),
                 
             'hkd_balance' => Tab::make('港币余额')
                 ->icon('heroicon-o-currency-dollar')
@@ -54,11 +78,10 @@ class ListBalanceAdjustments extends ListRecords
     
     /**
      * 获取当前激活的标签页
-     * 优先从 URL 参数获取，确保标签页切换时状态正确
      */
     protected function getCurrentTab(): string
     {
-        return request()->query('activeTab', $this->activeTab ?? 'channel');
+        return $this->activeTab ?? 'channel';
     }
     
     public function table(Table $table): Table
