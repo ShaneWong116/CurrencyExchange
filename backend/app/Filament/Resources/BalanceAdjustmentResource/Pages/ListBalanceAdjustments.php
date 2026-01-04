@@ -65,9 +65,8 @@ class ListBalanceAdjustments extends ListRecords
                 
             'channel' => Tab::make('渠道余额')
                 ->icon('heroicon-o-scale')
-                ->badge(Channel::count())
-                // 返回空结果集，因为 table() 方法会完全覆盖查询使用 Channel 模型
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereRaw('1 = 0')),
+                ->badge(Channel::count()),
+                // 不使用 modifyQueryUsing，因为 table() 方法会完全覆盖查询使用 Channel 模型
                 
             'hkd_balance' => Tab::make('港币余额')
                 ->icon('heroicon-o-currency-dollar')
