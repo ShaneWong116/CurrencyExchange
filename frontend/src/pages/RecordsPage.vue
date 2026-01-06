@@ -34,6 +34,8 @@
             <span class="filter-type-label">{{ getFilterTypeLabel() }}汇总</span>
             <span class="filter-amount-cny">￥{{ formatInteger(getFilterStats().cny) }}</span>
             <span class="filter-amount-hkd">HK${{ formatInteger(getFilterStats().hkd) }}</span>
+            <!-- 即时买断时显示港币+利润总和 -->
+            <span class="filter-amount-total" v-if="filterType === 'instant_buyout'">+利 HK${{ formatInteger(getFilterStats().hkd + getFilterStats().profit) }}</span>
           </div>
         </div>
       </div>
@@ -673,7 +675,7 @@ export default {
           this.stats = {
             income: { cny: 0, hkd: 0, count: 0 },
             outcome: { cny: 0, hkd: 0, count: 0 },
-            instant: { cny: 0, hkd: 0, count: 0 }
+            instant: { cny: 0, hkd: 0, count: 0, profit: 0 }
           }
 
           // 处理 by_type 数据
@@ -696,7 +698,8 @@ export default {
                 this.stats.instant = {
                   cny: Number(stat.rmb_amount) || 0,
                   hkd: Number(stat.hkd_amount) || 0,
-                  count: Number(stat.count) || 0
+                  count: Number(stat.count) || 0,
+                  profit: Number(stat.instant_profit) || 0
                 }
               }
             })
@@ -1227,8 +1230,9 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 0;
+  flex-wrap: wrap;
 }
 
 .filter-type-label {
@@ -1259,6 +1263,14 @@ export default {
 
 .filter-summary-content.instant_buyout .filter-amount-hkd {
   color: #7b1fa2;
+}
+
+/* 即时买断港币+利润总和 */
+.filter-amount-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-left: 8px;
 }
 
 /* 加载更多按钮 */

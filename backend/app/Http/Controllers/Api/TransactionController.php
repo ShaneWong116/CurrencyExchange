@@ -295,6 +295,9 @@ class TransactionController extends Controller
                 'rmb_amount' => round((float) (clone $typeQuery)->sum('rmb_amount'), 2),
                 'hkd_amount' => round((float) (clone $typeQuery)->sum('hkd_amount'), 2),
                 'count' => (clone $typeQuery)->count(),
+                'instant_profit' => $type === 'instant_buyout' 
+                    ? round((float) (clone $typeQuery)->sum('instant_profit'), 2) 
+                    : 0,
             ];
         }
 

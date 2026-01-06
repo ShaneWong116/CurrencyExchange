@@ -85,6 +85,31 @@
                   </q-item-label>
                 </q-item-section>
               </q-item>
+              
+              <q-separator />
+              
+              <!-- 出账汇总 -->
+              <q-item>
+                <q-item-section>
+                  <q-item-label class="text-grey-7">✓ 出账汇总</q-item-label>
+                  <q-item-label class="text-h6 text-weight-bold text-primary">
+                    {{ formatInteger(preview.unsettled_outcome_rmb) }} CNY / {{ formatInteger(preview.unsettled_outcome_hkd) }} HKD
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+              
+              <!-- 即时买断汇总 -->
+              <q-item>
+                <q-item-section>
+                  <q-item-label class="text-grey-7">✓ 即时买断汇总</q-item-label>
+                  <q-item-label class="text-h6 text-weight-bold text-primary">
+                    {{ formatInteger(preview.instant_rmb_total) }} CNY / {{ formatInteger(preview.instant_actual_hkd) }} HKD
+                  </q-item-label>
+                  <q-item-label class="text-h6 text-weight-bold text-primary">
+                    +利 {{ formatInteger(preview.instant_actual_hkd + preview.instant_profit) }} HKD
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
             </q-list>
           </q-card-section>
         </q-card>
@@ -495,6 +520,12 @@ const preview = ref({
   cost_hkd_total: 0,
   unsettled_income_rmb: 0,
   unsettled_income_hkd: 0,
+  // 出账汇总
+  unsettled_outcome_rmb: 0,
+  unsettled_outcome_hkd: 0,
+  // 即时买断汇总
+  instant_rmb_total: 0,
+  instant_actual_hkd: 0,
 })
 const showChannelRmbBalances = ref(false)
 const instantBuyoutRate = ref(null)
