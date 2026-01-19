@@ -60,12 +60,6 @@
         />
       </q-form>
 
-      <q-banner inline-actions class="bg-grey-2 text-grey-8 q-mt-lg" rounded>
-        <div class="text-caption">
-          测试账号: abc123 · 密码: 123456
-        </div>
-      </q-banner>
-
       <!-- 版本号 -->
       <div class="version-info">
         v{{ appVersion }}
@@ -75,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import packageJson from '../../package.json'
@@ -94,6 +88,28 @@ const fieldErrors = ref({
   username: '',
   password: ''
 })
+
+// 重置表单与错误
+const resetForm = () => {
+  form.value = { username: '', password: '' }
+  fieldErrors.value = { username: '', password: '' }
+  errorMessage.value = ''
+}
+
+// 初始化确保为空
+onMounted(() => {
+  resetForm()
+})
+
+// 监听认证状态，自动登出时清空账号密码
+watch(
+  () => authStore.authState,
+  (state) => {
+    if (state === 'unauthenticated') {
+      resetForm()
+    }
+  }
+)
 
 // 清除字段错误
 const clearFieldError = (field) => {

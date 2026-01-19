@@ -265,8 +265,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     startAutoLogoutCheck() {
-      const checkInterval = 60000 // 每分钟检查一次
-      const autoLogoutTime = 10 * 60 * 1000 // 10分钟
+      const checkInterval = 5000 // 每5秒检查一次，加快提醒响应
+      const autoLogoutTime = 60 * 1000 // 1分钟
       
       const check = () => {
         // 如果已经不是认证状态，停止检查
@@ -280,8 +280,8 @@ export const useAuthStore = defineStore('auth', {
           return
         }
         
-        // 在最后1分钟显示提醒
-        if (Date.now() - this.lastActivity > (autoLogoutTime - 60000)) {
+        // 在最后10秒显示提醒
+        if (Date.now() - this.lastActivity > (autoLogoutTime - 10000)) {
           Notify.create({
             type: 'warning',
             message: '即将自动登出，请点击任意位置保持登录',
