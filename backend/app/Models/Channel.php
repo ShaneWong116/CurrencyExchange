@@ -71,14 +71,23 @@ class Channel extends Model
     }
 
     /**
-     * 获取RMB余额（动态计算）
-     * 渠道当前余额 = 渠道人民币结余（基础余额）+ 未结算入账人民币 - 未结算出账人民币
+     * 获取RMB余额（动态计算，按渠道区分）
+     * 渠道当前余额 = 该渠道的人民币基础余额（initial_amount）+ 该渠道的未结算交易人民币净额
      * 
-     * 基础余额来源：ChannelBalance 表的 initial_amount（结算后的基础余额）
+     * 计算公式：
+     * baseBalance (该渠道的 initial_amount) + 未结算入账人民币 - 未结算出账人民币
+     * 
+     * 注意：
+     * 1. 所有计算都按渠道区分：
+     *    - baseBalance：从该渠道的 ChannelBalance 记录中读取
+     *    - 未结算交易：只统计该渠道（channel_id）的交易记录
+     * 
+     * 2. 基础余额来源：ChannelBalance 表的 initial_amount（结算后的基础余额）
      */
     public function getRmbBalance()
     {
-        // 获取渠道的基础人民币结余（从 ChannelBalance 表读取最新记录的 initial_amount）
+        // 获取该渠道的基础人民币结余（从该渠道的 ChannelBalance 表读取最新记录的 initial_amount）
+        // 注意：$this->balances() 已经按渠道区分（hasMany 关系）
         $latestBalance = $this->balances()
             ->where('currency', 'RMB')
             ->orderBy('date', 'desc')
@@ -88,6 +97,7 @@ class Channel extends Model
         $baseBalance = $latestBalance ? (float) $latestBalance->initial_amount : 0.0;
         
         // 计算该渠道所有未结算交易的人民币净额
+        // 注意：$this->transactions() 已经按渠道区分（hasMany 关系，只返回该渠道的交易）
         // 入账增加人民币，出账减少人民币
         $unsettledIncome = (float) $this->transactions()
             ->where('settlement_status', 'unsettled')
@@ -103,11 +113,50 @@ class Channel extends Model
     }
 
     /**
-     * 获取HKD余额（直接读取）
+     * 获取HKD余额（动态计算，按渠道区分）
+     * 渠道当前余额 = 该渠道的港币基础余额（initial_amount）+ 该渠道的未结算交易港币净额
+     * 
+     * 计算公式：
+     * baseBalance (该渠道的 initial_amount) + 未结算出账港币 - 未结算入账港币
+     * 
+     * 注意：
+     * 1. 所有计算都按渠道区分：
+     *    - baseBalance：从该渠道的 ChannelBalance 记录中读取
+     *    - 未结算交易：只统计该渠道（channel_id）的交易记录
+     * 
+     * 2. 港币方向与人民币相反：
+     *    - 入账交易（income）：人民币增加，港币减少
+     *    - 出账交易（outcome）：人民币减少，港币增加
+     *    - 即时买断（instant_buyout）：不计入港币余额（它用于利润计算，不代表港币收付流水）
+     * 
+     * 3. 基础余额来源：ChannelBalance 表的 initial_amount（结算后的基础余额）
      */
     public function getHkdBalance()
     {
-        return $this->getCurrentBalance('HKD');
+        // 获取该渠道的基础港币结余（从该渠道的 ChannelBalance 表读取最新记录的 initial_amount）
+        // 注意：$this->balances() 已经按渠道区分（hasMany 关系）
+        $latestBalance = $this->balances()
+            ->where('currency', 'HKD')
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $baseBalance = $latestBalance ? (float) $latestBalance->initial_amount : 0.0;
+        
+        // 计算该渠道所有未结算交易的港币净额
+        // 注意：$this->transactions() 已经按渠道区分（hasMany 关系，只返回该渠道的交易）
+        // 出账增加港币，入账减少港币（港币方向与人民币相反）
+        $unsettledOutcome = (float) $this->transactions()
+            ->where('settlement_status', 'unsettled')
+            ->where('type', 'outcome')
+            ->sum('hkd_amount');
+            
+        $unsettledIncome = (float) $this->transactions()
+            ->where('settlement_status', 'unsettled')
+            ->where('type', 'income')
+            ->sum('hkd_amount');
+
+        return $baseBalance + $unsettledOutcome - $unsettledIncome;
     }
 
     /**

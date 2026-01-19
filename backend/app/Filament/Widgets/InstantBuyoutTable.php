@@ -46,7 +46,7 @@ class InstantBuyoutTable extends BaseWidget
         $locationId = $this->getLocationId();
 
         if ($locationId) {
-            // 🚀 按地点筛选时,查询所有未结算的即时买断交易
+            // 🚀 按地点筛选时,查询所有未结算的即时买断交易（与结算预览保持一致）
             $result = Transaction::where('location_id', $locationId)
                 ->where('type', 'instant_buyout')
                 ->where('settlement_status', 'unsettled')  // 只查询未结算的
@@ -77,8 +77,9 @@ class InstantBuyoutTable extends BaseWidget
             $totalProfit = 0;
             
             if ($count > 0) {
-                // 🚀 一次性查询平均汇率和总利润
+                // 🚀 一次性查询平均汇率和总利润（统计所有未结算的交易，与结算预览保持一致）
                 $result = Transaction::where('type', 'instant_buyout')
+                    ->where('settlement_status', 'unsettled')  // 只统计未结算的
                     ->selectRaw('
                         COALESCE(AVG(CASE WHEN instant_rate > 0 THEN instant_rate END), 0) as avg_rate,
                         COALESCE(SUM(instant_profit), 0) as total_profit
@@ -153,7 +154,7 @@ class InstantBuyoutTable extends BaseWidget
                     ->alignCenter(),
                     
                 Tables\Columns\TextColumn::make('profit')
-                    ->label('今日利润')
+                    ->label('未结算利润')
                     ->formatStateUsing(fn ($state) => '¥' . number_format($state, 2))
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger')
                     ->weight('bold'),

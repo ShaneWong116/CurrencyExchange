@@ -421,6 +421,44 @@ class SettlementService
                 Log::info("Settlement: Channel {$channelBalance['id']} RMB balance fixed to {$channelBalance['rmb_balance']}");
             }
             
+            // 12.1 固化各渠道港币余额到 ChannelBalance 的 initial_amount
+            // 这一步必须在标记交易为已结算之前执行，因为 getHkdBalance() 依赖未结算交易
+            $channels = Channel::all();
+            foreach ($channels as $channel) {
+                // 获取该渠道结算后的港币余额（使用动态计算方法）
+                $hkdBalance = $channel->getHkdBalance();
+                
+                // 获取该渠道最新的 HKD 余额记录
+                $balance = ChannelBalance::where('channel_id', $channel->id)
+                    ->where('currency', 'HKD')
+                    ->orderBy('date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                
+                if (!$balance) {
+                    // 如果没有记录，创建一个新的（不依赖日期）
+                    $balance = ChannelBalance::create([
+                        'channel_id' => $channel->id,
+                        'currency' => 'HKD',
+                        'date' => now()->toDateString(),
+                        'initial_amount' => 0,
+                        'income_amount' => 0,
+                        'outcome_amount' => 0,
+                        'current_balance' => 0,
+                    ]);
+                }
+                
+                // 将当前余额固化为新的基础余额
+                $balance->initial_amount = $hkdBalance;
+                $balance->current_balance = $hkdBalance;
+                // 重置交易统计（因为交易已结算）
+                $balance->income_amount = 0;
+                $balance->outcome_amount = 0;
+                $balance->save();
+                
+                Log::info("Settlement: Channel {$channel->id} HKD balance fixed to {$hkdBalance}");
+            }
+            
             // 13. 更新所有未结余的交易状态
             Transaction::unsettled()->update([
                 'settlement_status' => 'settled',
