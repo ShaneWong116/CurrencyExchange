@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # 本地启动覆盖配置：关闭强制 HTTPS，挂载本地代码实现实时开发
+  backend:
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8080
+      - ASSET_URL=http://localhost:8080
+      - FORCE_HTTPS=false
+      - SESSION_SECURE_COOKIE=false
+      - SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,127.0.0.1,127.0.0.1:8080
+      - QUEUE_CONNECTION=sync
+    volumes:
+      # 挂载本地代码目录（代码修改实时生效）
+      - ./backend/app:/var/www/html/app
+      - ./backend/routes:/var/www/html/routes
+      - ./backend/resources:/var/www/html/resources
+      - ./backend/config:/var/www/html/config
+      - ./backend/database:/var/www/html/database
+      - ./backend/storage:/var/www/html/storage
+      - ./backend/bootstrap:/var/www/html/bootstrap
+      - ./backend/public:/var/www/html/public
+      # 挂载 composer.json 和 composer.lock（如果需要更新依赖）
+      - ./backend/composer.json:/var/www/html/composer.json
+      - ./backend/composer.lock:/var/www/html/composer.lock
+      # 挂载 .env 文件（本地配置）
+      - ./backend/.env:/var/www/html/.env
+

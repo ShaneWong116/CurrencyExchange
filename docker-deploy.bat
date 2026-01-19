@@ -49,7 +49,7 @@ echo [3/7] 构建前端应用...
 cd frontend
 
 if not exist ".env.production" (
-    echo VITE_API_BASE_URL=http://localhost/api > .env.production
+    echo VITE_API_BASE_URL=http://localhost:8080/api > .env.production
     echo VITE_APP_NAME=财务管理系统 >> .env.production
     echo ⚠️  已创建 .env.production，请检查 API 地址是否正确
 )
