@@ -56,7 +56,7 @@ class SettlementService
 
     /**
      * 推荐结余日期
-     * 逻辑:如果今天已有结余,推荐明天;否则推荐今天
+     * 逻辑:推荐今天，如果今天已有结余，则提示用户选择其他可用日期
      * 
      * @return array ['recommended_date' => '2024-10-29', 'has_today' => true, 'message' => '...']
      */
@@ -66,19 +66,10 @@ class SettlementService
         $hasToday = Settlement::whereDate('settlement_date', $today)->exists();
         
         if ($hasToday) {
-            // 今天已有结余,推荐第一个未使用的日期
-            $recommendedDate = now()->addDay()->toDateString();
-            $count = 1;
-            
-            // 最多向后查找30天
-            while (Settlement::whereDate('settlement_date', $recommendedDate)->exists() && $count < 30) {
-                $recommendedDate = now()->addDays(++$count)->toDateString();
-            }
-            
             return [
-                'recommended_date' => $recommendedDate,
+                'recommended_date' => $today,
                 'has_today' => true,
-                'message' => "今日已有结余记录,建议选择其他日期"
+                'message' => "今日已有结余记录，请选择其他可用日期"
             ];
         }
         
@@ -282,18 +273,13 @@ class SettlementService
             // 1. 确定结余日期
             $settlementDate = $settlementDate ?? now()->toDateString();
             
-            // 2. 验证日期不能早于今天（允许今天及以后的日期）
+            // 2. 验证日期不能是已有结算的日期（允许过去但没有结算的日期）
             $selectedDate = Carbon::parse($settlementDate)->startOfDay();
-            $today = Carbon::today();
-            if ($selectedDate->lt($today)) {
-                throw new Exception('该日期不可用，请选择今天或之后的日期');
-            }
             
-            // 3. 检查该日期是否已有结余(给予警告但允许,因为可能需要一天多次结余)
+            // 检查该日期是否已有结余(给予警告但允许,因为可能需要一天多次结余)
             $existingCount = Settlement::whereDate('settlement_date', $settlementDate)->count();
             if ($existingCount > 0) {
-                // 记录日志但不阻止(因为用户已经明确选择了该日期)
-                Log::warning("日期 {$settlementDate} 已有 {$existingCount} 条结余记录,用户选择继续");
+                throw new Exception('该日期已有结余记录，请选择其他日期');
             }
             
             // 4. 验证密码

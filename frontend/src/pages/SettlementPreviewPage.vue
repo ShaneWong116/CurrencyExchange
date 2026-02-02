@@ -385,7 +385,7 @@
                 <q-icon name="warning" size="md" />
               </template>
               <div class="text-subtitle2 text-weight-bold">⚠️ {{ dateWarning }}</div>
-              <div class="text-caption q-mt-xs">请从下方选择可用日期</div>
+              <div class="text-caption q-mt-xs">可以选择任何没有结算记录的日期</div>
             </q-banner>
             
             <q-banner 
@@ -398,7 +398,7 @@
                 <q-icon name="check_circle" size="md" />
               </template>
               <div class="text-subtitle2 text-weight-bold">✓ 今日尚未结余</div>
-              <div class="text-caption q-mt-xs">请从下方选择可用的记录日期</div>
+              <div class="text-caption q-mt-xs">可以选择任何没有结算记录的日期</div>
             </q-banner>
             
             <!-- 直接嵌入日历组件 -->
@@ -420,7 +420,7 @@
             <div v-else class="q-mt-md q-pa-md bg-grey-3 rounded-borders">
               <div class="text-center text-grey-7">
                 <q-icon name="event" size="md" class="q-mb-xs" />
-                <div class="text-caption">请从上方日历选择结余日期</div>
+                <div class="text-caption">请选择结余日期（灰色日期已有结算记录）</div>
               </div>
             </div>
           </q-card-section>
@@ -608,21 +608,9 @@ const formatDateDisplay = (date) => {
   return `${year}年${month}月${day}日 ${weekday}`
 }
 
-// 日期选项过滤:禁用已使用的日期和过去日期
+// 日期选项过滤:只禁用已使用的日期，允许选择过去但没有结算的日期
 const dateOptions = (date) => {
-  // 使用本地时间而非UTC时间
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  const todayStr = `${year}/${month}/${day}`
-  
-  // 1. 禁用过去日期
-  if (date < todayStr) {
-    return false
-  }
-  
-  // 2. 禁用已使用的日期
+  // 只禁用已使用的日期
   if (usedDates.value && usedDates.value.length > 0) {
     const checkDateDash = date.replace(/\//g, '-')
     if (usedDates.value.includes(checkDateDash)) {
