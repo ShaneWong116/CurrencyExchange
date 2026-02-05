@@ -7,6 +7,11 @@
             月度报表
         </button>
         <button 
+            wire:click="$set('activeTab', 'monthly-detail')"
+            class="px-4 py-2 -mb-px {{ $activeTab === 'monthly-detail' ? 'border-b-2 border-primary-600 text-primary-600 font-medium' : 'text-gray-500 hover:text-gray-700' }}">
+            月度收支明细表
+        </button>
+        <button 
             wire:click="$set('activeTab', 'daily')"
             class="px-4 py-2 -mb-px {{ $activeTab === 'daily' ? 'border-b-2 border-primary-600 text-primary-600 font-medium' : 'text-gray-500 hover:text-gray-700' }}">
             日报表
@@ -14,7 +19,7 @@
         <button 
             wire:click="$set('activeTab', 'yearly')"
             class="px-4 py-2 -mb-px {{ $activeTab === 'yearly' ? 'border-b-2 border-primary-600 text-primary-600 font-medium' : 'text-gray-500 hover:text-gray-700' }}">
-            年度报表（开发中）
+            年度报表
         </button>
     </div>
 
@@ -309,6 +314,363 @@
     </x-filament::section>
     @endif
 
+    {{-- 月度收支明细表 --}}
+    @if ($activeTab === 'monthly-detail')
+        <x-filament::section heading="月度收支明细表">
+            <x-slot name="headerEnd">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    共 {{ $monthlyDetailData ? $monthlyDetailData['days_in_month'] : 0 }} 天
+                </div>
+            </x-slot>
+            
+            {{-- 月份切换器 --}}
+            <div class="flex items-center justify-between mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg relative">
+                {{-- 加载指示器覆盖层 --}}
+                <div wire:loading wire:target="previousMonth,nextMonth" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 rounded-lg flex items-center justify-center z-10">
+                    <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                        <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">加载中...</span>
+                    </div>
+                </div>
+                
+                <button 
+                    wire:click="previousMonth"
+                    class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    wire:loading.attr="disabled"
+                    wire:target="previousMonth,nextMonth">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>上个月</span>
+                </button>
+                
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {{ $monthlyDetailData ? $monthlyDetailData['year'] . '年 ' . $monthlyDetailData['month'] . '月' : (data_get($this->monthly, 'year', now()->year) . '年 ' . data_get($this->monthly, 'month', now()->month) . '月') }}
+                    </div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        点击左右按钮切换月份
+                    </div>
+                </div>
+                
+                <button 
+                    wire:click="nextMonth"
+                    class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    wire:loading.attr="disabled"
+                    wire:target="previousMonth,nextMonth">
+                    <span>下个月</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            @if ($monthlyDetailData)
+                {{-- 汇总统计卡片 --}}
+                <div class="flex gap-4 mb-6 relative">
+                    {{-- 加载指示器 --}}
+                    <div wire:loading wire:target="previousMonth,nextMonth" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded-lg flex items-center justify-center z-10">
+                        <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">更新中...</span>
+                        </div>
+                    </div>
+                    
+                    {{-- 总收入卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总收入</span>
+                            <svg class="w-5 h-5" style="color: #16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #16a34a;">
+                            ¥{{ number_format($monthlyDetailData['summary']['total_income'], 2) }}
+                        </div>
+                    </div>
+
+                    {{-- 总支出卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总支出</span>
+                            <svg class="w-5 h-5" style="color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #dc2626;">
+                            ¥{{ number_format($monthlyDetailData['summary']['total_expenses'], 2) }}
+                        </div>
+                    </div>
+
+                    {{-- 总利润卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总利润</span>
+                            <svg class="w-5 h-5" style="color: #16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #16a34a;">
+                            ¥{{ number_format($monthlyDetailData['summary']['total_profit'], 2) }}
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 导出按钮 --}}
+                <div class="mt-6 mb-4 flex justify-end">
+                    <button 
+                        wire:click="exportMonthlyDetail"
+                        wire:loading.attr="disabled"
+                        wire:target="exportMonthlyDetail"
+                        class="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 focus:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {{-- 默认图标 --}}
+                        <svg wire:loading.remove wire:target="exportMonthlyDetail" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        {{-- 加载中图标 --}}
+                        <svg wire:loading wire:target="exportMonthlyDetail" class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="exportMonthlyDetail">导出Excel</span>
+                        <span wire:loading wire:target="exportMonthlyDetail">导出中...</span>
+                    </button>
+                </div>
+
+                {{-- 双表格布局 - 左右并排，使用更宽的容器 --}}
+                <div class="-mx-6 px-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                    {{-- 加载指示器覆盖层 --}}
+                    <div wire:loading wire:target="previousMonth,nextMonth" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded-lg flex items-center justify-center z-10">
+                        <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">加载数据中...</span>
+                        </div>
+                    </div>
+                    
+                    {{-- 收入表格 --}}
+                    <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col" style="max-height: 800px;">
+                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <h3 class="text-lg font-semibold text-green-600 dark:text-green-400">收入明细</h3>
+                        </div>
+                        <div class="overflow-auto flex-1">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">序号</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">日期</th>
+                                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">金额</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">项目</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">备注</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800" x-data="{ expandedIncome: {} }">
+                                    @foreach($monthlyDetailData['income_data'] as $index => $income)
+                                    @php
+                                        // 查询该结算的其他收入项目
+                                        $otherIncomes = $income['has_settlement'] && $income['settlement_id'] 
+                                            ? \App\Models\SettlementExpense::where('settlement_id', $income['settlement_id'])
+                                                ->where('type', 'income')
+                                                ->get()
+                                            : collect([]);
+                                        $hasExpandableContent = $income['has_settlement'] && ($income['base_profit'] > 0 || $otherIncomes->count() > 0);
+                                    @endphp
+                                    
+                                    {{-- 主收入行 --}}
+                                    <tr class="{{ $income['has_settlement'] ? 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800' : 'bg-gray-50 dark:bg-gray-850' }} transition-colors {{ $hasExpandableContent ? 'cursor-pointer' : '' }}"
+                                        @if($hasExpandableContent)
+                                        @click="expandedIncome[{{ $index }}] = !expandedIncome[{{ $index }}]"
+                                        @endif>
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                            @if($hasExpandableContent)
+                                            <div class="flex items-center gap-1.5">
+                                                <span x-show="!expandedIncome[{{ $index }}]" class="text-gray-400 text-xs">▶</span>
+                                                <span x-show="expandedIncome[{{ $index }}]" class="text-gray-400 text-xs">▼</span>
+                                                <span>{{ $index + 1 }}</span>
+                                            </div>
+                                            @else
+                                            {{ $index + 1 }}
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ $income['date_display'] }}</td>
+                                        <td class="px-3 py-3 text-sm text-right font-medium tabular-nums text-green-600 dark:text-green-400">
+                                            {{ $income['total_profit'] > 0 ? '¥' . number_format($income['total_profit'], 2) : '-' }}
+                                        </td>
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                            {{ $income['items'] }}
+                                        </td>
+                                        <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                            {{ $income['remarks'] ?: '-' }}
+                                        </td>
+                                    </tr>
+                                    
+                                    {{-- 展开的收入明细行 --}}
+                                    @if($hasExpandableContent)
+                                    <tr x-show="expandedIncome[{{ $index }}]" 
+                                        x-transition:enter="transition ease-out duration-200"
+                                        x-transition:enter-start="opacity-0"
+                                        x-transition:enter-end="opacity-100"
+                                        x-transition:leave="transition ease-in duration-150"
+                                        x-transition:leave-start="opacity-100"
+                                        x-transition:leave-end="opacity-0"
+                                        style="display: none;"
+                                        class="bg-green-50 dark:bg-gray-800">
+                                        <td colspan="5" class="px-3 py-3">
+                                            <div class="ml-6">
+                                                <table class="w-full text-sm">
+                                                    <thead class="border-b border-green-200 dark:border-gray-700">
+                                                        <tr>
+                                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">序号</th>
+                                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">日期</th>
+                                                            <th class="px-2 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400">金额</th>
+                                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">项目</th>
+                                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">备注</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-green-100 dark:divide-gray-700">
+                                                        @php $subIndex = 1; @endphp
+                                                        
+                                                        {{-- 日结算利润行（如果有基础利润） --}}
+                                                        @if($income['base_profit'] > 0)
+                                                        <tr class="hover:bg-green-100 dark:hover:bg-gray-750">
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300">{{ $subIndex++ }}</td>
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $income['date_display'] }}</td>
+                                                            <td class="px-2 py-2 text-right font-medium tabular-nums text-green-600 dark:text-green-400">
+                                                                ¥{{ number_format($income['base_profit'], 2) }}
+                                                            </td>
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300">日结算利润</td>
+                                                            <td class="px-2 py-2 text-gray-500 dark:text-gray-400">-</td>
+                                                        </tr>
+                                                        @endif
+                                                        
+                                                        {{-- 其他收入项目行（可编辑备注） --}}
+                                                        @foreach($otherIncomes as $otherIncome)
+                                                        <tr class="hover:bg-green-100 dark:hover:bg-gray-750">
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300">{{ $subIndex++ }}</td>
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $income['date_display'] }}</td>
+                                                            <td class="px-2 py-2 text-right font-medium tabular-nums text-green-600 dark:text-green-400">
+                                                                ¥{{ number_format($otherIncome->amount, 2) }}
+                                                            </td>
+                                                            <td class="px-2 py-2 text-gray-700 dark:text-gray-300">{{ $otherIncome->item_name }}</td>
+                                                            <td class="px-2 py-2">
+                                                                <div 
+                                                                    x-data="{ editing: false, value: '{{ addslashes($otherIncome->remarks ?? '') }}' }"
+                                                                    @click.stop="editing = true"
+                                                                    class="cursor-pointer relative">
+                                                                    {{-- 加载指示器 --}}
+                                                                    <div wire:loading wire:target="updateExpenseRemark" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded flex items-center justify-center">
+                                                                        <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                        </svg>
+                                                                    </div>
+                                                                    
+                                                                    <span x-show="!editing" class="text-gray-600 dark:text-gray-400">
+                                                                        {{ $otherIncome->remarks ?: '点击编辑' }}
+                                                                    </span>
+                                                                    <input 
+                                                                        x-show="editing"
+                                                                        x-model="value"
+                                                                        @blur="editing = false; $wire.updateExpenseRemark({{ $otherIncome->id }}, value)"
+                                                                        @keydown.enter="editing = false; $wire.updateExpenseRemark({{ $otherIncome->id }}, value)"
+                                                                        @click.stop
+                                                                        class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                                                        type="text">
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    {{-- 支出表格 --}}
+                    <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col" style="max-height: 800px;">
+                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <h3 class="text-lg font-semibold text-red-600 dark:text-red-400">支出明细</h3>
+                        </div>
+                        <div class="overflow-auto flex-1">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">序号</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">日期</th>
+                                        <th class="px-3 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">金额</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">项目</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">备注</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                    @foreach($monthlyDetailData['expense_data'] as $index => $expense)
+                                    <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">{{ $index + 1 }}</td>
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ \Carbon\Carbon::parse($expense['date'])->format('Y.n.j') }}</td>
+                                        <td class="px-3 py-3 text-sm text-right font-medium tabular-nums text-red-600 dark:text-red-400">
+                                            ¥{{ number_format($expense['amount'], 2) }}
+                                        </td>
+                                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-gray-100">{{ $expense['item_name'] }}</td>
+                                        <td class="px-3 py-3 text-sm">
+                                            <div 
+                                                x-data="{ editing: false, value: '{{ addslashes($expense['remarks']) }}' }"
+                                                @click="editing = true"
+                                                class="cursor-pointer relative">
+                                                {{-- 加载指示器 --}}
+                                                <div wire:loading wire:target="updateExpenseRemark" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded flex items-center justify-center">
+                                                    <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
+                                                
+                                                <span x-show="!editing" class="text-gray-600 dark:text-gray-400">
+                                                    {{ $expense['remarks'] ?: '点击编辑' }}
+                                                </span>
+                                                <input 
+                                                    x-show="editing"
+                                                    x-model="value"
+                                                    @blur="editing = false; $wire.updateExpenseRemark({{ $expense['id'] }}, value)"
+                                                    @keydown.enter="editing = false; $wire.updateExpenseRemark({{ $expense['id'] }}, value)"
+                                                    class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                                    type="text">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            @else
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <svg class="mx-auto mb-4" width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <p class="text-lg font-medium">暂无数据</p>
+                </div>
+                </div>
+            @endif
+        </x-filament::section>
+    @endif
+
     {{-- 日报表 --}}
     @if ($activeTab === 'daily')
         <x-filament::section heading="日度交易报表">
@@ -547,16 +909,199 @@
     </x-filament::section>
         @endif
 
-    {{-- 年度报表（暂未开发） --}}
+    {{-- 年度报表 --}}
     @if ($activeTab === 'yearly')
         <x-filament::section heading="年度报表">
-            <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-                <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                <p class="text-lg">功能开发中，敬请期待</p>
+            <x-slot name="headerEnd">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    共 12 个月
+                </div>
+            </x-slot>
+            
+            {{-- 年份切换器 --}}
+            <div class="flex items-center justify-between mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg relative">
+                {{-- 加载指示器覆盖层 --}}
+                <div wire:loading wire:target="previousYear,nextYear" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 rounded-lg flex items-center justify-center z-10">
+                    <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                        <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">加载中...</span>
+                    </div>
+                </div>
+                
+                <button 
+                    wire:click="previousYear"
+                    class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    wire:loading.attr="disabled"
+                    wire:target="previousYear,nextYear">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>上一年</span>
+                </button>
+                
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {{ $yearlyData ? $yearlyData['year'] . '年' : (data_get($this->yearly, 'year', now()->year) . '年') }}
+                    </div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        点击左右按钮切换年份
+                    </div>
+                </div>
+                
+                <button 
+                    wire:click="nextYear"
+                    class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    wire:loading.attr="disabled"
+                    wire:target="previousYear,nextYear">
+                    <span>下一年</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
             </div>
-    </x-filament::section>
+            
+            @if ($yearlyData)
+                {{-- 汇总统计卡片 --}}
+                <div class="flex gap-4 mb-6 relative">
+                    {{-- 加载指示器 --}}
+                    <div wire:loading wire:target="previousYear,nextYear" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded-lg flex items-center justify-center z-10">
+                        <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">更新中...</span>
+                        </div>
+                    </div>
+                    
+                    {{-- 净利润卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">净利润</span>
+                            <svg class="w-5 h-5" style="color: #16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #16a34a;">
+                            ¥{{ number_format($yearlyData['summary']['net_profit'], 2) }}
+                        </div>
+                    </div>
+
+                    {{-- 总支出卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总支出</span>
+                            <svg class="w-5 h-5" style="color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #dc2626;">
+                            ¥{{ number_format($yearlyData['summary']['total_expenses'], 2) }}
+                        </div>
+                    </div>
+
+                    {{-- 总本金卡片 --}}
+                    <div class="flex-1 rounded-lg p-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">总本金</span>
+                            <svg class="w-5 h-5" style="color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-3xl font-bold tabular-nums" style="color: #2563eb;">
+                            ¥{{ number_format($yearlyData['summary']['final_capital'], 2) }}
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 年度明细表 --}}
+                <div class="-mx-6 px-6 relative">
+                    {{-- 加载指示器覆盖层 --}}
+                    <div wire:loading wire:target="previousYear,nextYear,updateDividend" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded-lg flex items-center justify-center z-10">
+                        <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">加载数据中...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-auto" style="max-height: 700px;">
+                        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">序号</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">月份</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">本金</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">总收入</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">总支出</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">总利润</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">季度分红</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+                                @foreach($yearlyData['monthly_data'] as $index => $month)
+                                <tr class="{{ $month['has_data'] ? 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800' : 'bg-gray-50 dark:bg-gray-850' }} transition-colors">
+                                    <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{{ $index + 1 }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ $month['month_display'] }}</td>
+                                    <td class="px-4 py-3 text-sm text-right font-medium tabular-nums {{ $month['has_data'] ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500' }}">
+                                        {{ $month['has_data'] ? '¥' . number_format($month['capital'], 2) : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-right font-medium tabular-nums {{ $month['has_data'] ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500' }}">
+                                        {{ $month['has_data'] ? '¥' . number_format($month['income'], 2) : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-right font-medium tabular-nums {{ $month['has_data'] ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500' }}">
+                                        {{ $month['has_data'] ? '¥' . number_format($month['expenses'], 2) : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-right font-medium tabular-nums {{ $month['has_data'] ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500' }}">
+                                        {{ $month['has_data'] ? '¥' . number_format($month['profit'], 2) : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-right">
+                                        <div 
+                                            x-data="{ editing: false, value: '{{ $month['dividend'] }}' }"
+                                            @click="editing = true"
+                                            class="cursor-pointer relative">
+                                            {{-- 加载指示器 --}}
+                                            <div wire:loading wire:target="updateDividend" class="absolute inset-0 bg-white/70 dark:bg-gray-900/70 rounded flex items-center justify-center">
+                                                <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                            
+                                            <span x-show="!editing" class="text-gray-600 dark:text-gray-400 font-medium tabular-nums">
+                                                {{ $month['dividend'] > 0 ? '¥' . number_format($month['dividend'], 2) : '点击编辑' }}
+                                            </span>
+                                            <input 
+                                                x-show="editing"
+                                                x-model="value"
+                                                @blur="editing = false; $wire.updateDividend({{ $yearlyData['year'] }}, {{ $month['month'] }}, parseFloat(value) || 0)"
+                                                @keydown.enter="editing = false; $wire.updateDividend({{ $yearlyData['year'] }}, {{ $month['month'] }}, parseFloat(value) || 0)"
+                                                class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right"
+                                                type="number"
+                                                step="0.01"
+                                                min="0">
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @else
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <svg class="mx-auto mb-4" width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <p class="text-lg font-medium">暂无数据</p>
+                </div>
+            @endif
+        </x-filament::section>
     @endif
 </x-filament::page>
 

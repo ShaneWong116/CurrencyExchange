@@ -18,6 +18,7 @@ class SettlementExpense extends Model
         'type',
         'item_name',
         'amount',
+        'remarks',
     ];
 
     protected $casts = [

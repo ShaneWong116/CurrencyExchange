@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DailySettlementExport;
 use App\Exports\MonthlySettlementExport;
 use App\Exports\YearlySettlementExport;
+use App\Exports\MonthlyDetailExport;
 use Illuminate\Support\Facades\Gate;
 
 class ReportsPage extends Page
@@ -33,8 +34,10 @@ class ReportsPage extends Page
     ];
     
     public $monthlyData = null;
+    public $monthlyDetailData = null;
     public $dailyData = null;
-    public $activeTab = 'monthly'; // 'daily', 'monthly', 'yearly'
+    public $yearlyData = null;
+    public $activeTab = 'monthly'; // 'daily', 'monthly', 'yearly', 'monthly-detail'
 
     public ?array $yearly = [
         'year' => null,
@@ -162,6 +165,17 @@ class ReportsPage extends Page
         $this->dailyData = $service->getDailyTransactionData($date);
     }
 
+    /**
+     * 加载月度明细数据
+     */
+    public function loadMonthlyDetailData(ReportService $service): void
+    {
+        $year = (int) data_get($this->monthly, 'year');
+        $month = (int) data_get($this->monthly, 'month');
+        
+        $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail($year, $month);
+    }
+
     public function mount(): void
     {
         // 初始化日报表日期
@@ -171,13 +185,21 @@ class ReportsPage extends Page
         $this->monthly['year'] = now()->year;
         $this->monthly['month'] = now()->month;
         
+        // 初始化年度报表年份
+        $this->yearly['year'] = now()->year;
+        
         // 自动加载当月数据和当日数据
         $service = app(ReportService::class);
         $this->monthlyData = $service->getMonthlySettlementData(
             $this->monthly['year'],
             $this->monthly['month']
         );
+        $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail(
+            $this->monthly['year'],
+            $this->monthly['month']
+        );
         $this->dailyData = $service->getDailyTransactionData($this->daily['date']);
+        $this->yearlyData = $service->getYearlyReportData($this->yearly['year']);
     }
 
     /**
@@ -228,8 +250,9 @@ class ReportsPage extends Page
         $this->monthly['year'] = $year;
         $this->monthly['month'] = $month;
         
-        // 加载数据
+        // 加载数据 - 同步更新结余报表和明细报表数据
         $this->monthlyData = $service->getMonthlySettlementData($year, $month);
+        $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail($year, $month);
     }
 
     public function nextMonth(ReportService $service): void
@@ -247,8 +270,9 @@ class ReportsPage extends Page
         $this->monthly['year'] = $year;
         $this->monthly['month'] = $month;
         
-        // 加载数据
+        // 加载数据 - 同步更新结余报表和明细报表数据
         $this->monthlyData = $service->getMonthlySettlementData($year, $month);
+        $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail($year, $month);
     }
 
     public function generateMonthly(ReportService $service): void
@@ -256,10 +280,10 @@ class ReportsPage extends Page
         $year = (int) data_get($this->monthly, 'year');
         $month = (int) data_get($this->monthly, 'month');
         
-        // 查询该月的结余数据
-        $data = $service->getMonthlySettlementData($year, $month);
+        // 查询该月的结余数据和明细数据
+        $this->monthlyData = $service->getMonthlySettlementData($year, $month);
+        $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail($year, $month);
         
-        $this->monthlyData = $data;
         Notification::make()->title('月度报表加载完成')->success()->send();
     }
 
@@ -290,6 +314,65 @@ class ReportsPage extends Page
         }
         
         return Excel::download(new MonthlySettlementExport($rows), $filename);
+    }
+
+    /**
+     * 导出月度收支明细报表
+     */
+    public function exportMonthlyDetail(ReportService $service)
+    {
+        try {
+            $year = (int) data_get($this->monthly, 'year');
+            $month = (int) data_get($this->monthly, 'month');
+            
+            // 验证年份和月份
+            if (!$year || !$month) {
+                Notification::make()
+                    ->title('导出失败')
+                    ->body('请先选择有效的年份和月份')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // 获取月度明细数据（如果尚未加载）
+            $data = $this->monthlyDetailData ?? $service->getMonthlyIncomeExpenseDetail($year, $month);
+            
+            // 验证数据是否存在
+            if (empty($data) || (empty($data['income_data']) && empty($data['expense_data']))) {
+                Notification::make()
+                    ->title('导出失败')
+                    ->body('选定月份没有可导出的数据')
+                    ->warning()
+                    ->send();
+                return;
+            }
+            
+            // 格式化文件名：月度收支明细表_YYYY年MM月.xlsx
+            $filename = sprintf('月度收支明细表_%d年%02d月.xlsx', $year, $month);
+            
+            // 生成并下载Excel文件
+            return Excel::download(new MonthlyDetailExport($data, $year, $month), $filename);
+            
+        } catch (\Exception $e) {
+            // 记录错误日志
+            \Log::error('Monthly detail export failed', [
+                'year' => $year ?? null,
+                'month' => $month ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id()
+            ]);
+            
+            // 显示用户友好的错误消息
+            Notification::make()
+                ->title('导出失败')
+                ->body('生成Excel文件时发生错误，请稍后重试或联系管理员')
+                ->danger()
+                ->send();
+            
+            return null;
+        }
     }
 
     public function generateYearly(ReportService $service): void
@@ -323,6 +406,67 @@ class ReportsPage extends Page
         return Excel::download(new YearlySettlementExport($rows), $filename);
     }
 
+    /**
+     * 更新支出项目备注（内联编辑功能）
+     */
+    public function updateExpenseRemark(int $expenseId, string $remark): void
+    {
+        try {
+            $service = app(ReportService::class);
+            $result = $service->updateSettlementExpenseRemark($expenseId, $remark);
+            
+            if ($result['success']) {
+                // 更新成功，重新加载明细数据以反映更改
+                $year = (int) data_get($this->monthly, 'year');
+                $month = (int) data_get($this->monthly, 'month');
+                
+                if ($year && $month) {
+                    $this->monthlyDetailData = $service->getMonthlyIncomeExpenseDetail($year, $month);
+                }
+                
+                Notification::make()
+                    ->title('备注更新成功')
+                    ->body($result['message'])
+                    ->success()
+                    ->send();
+            } else {
+                // 更新失败，显示具体错误信息
+                $errorMessage = $result['message'] ?? '备注更新失败';
+                
+                Notification::make()
+                    ->title('备注更新失败')
+                    ->body($errorMessage)
+                    ->danger()
+                    ->send();
+                
+                // 记录详细错误信息用于调试
+                if (isset($result['errors'])) {
+                    \Log::warning('Expense remark update failed with validation errors', [
+                        'expense_id' => $expenseId,
+                        'remark' => $remark,
+                        'errors' => $result['errors'],
+                        'user_id' => auth()->id()
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // 捕获意外异常
+            \Log::error('Unexpected error in updateExpenseRemark', [
+                'expense_id' => $expenseId,
+                'remark' => $remark,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id()
+            ]);
+            
+            Notification::make()
+                ->title('系统错误')
+                ->body('更新备注时发生系统错误，请稍后重试或联系管理员')
+                ->danger()
+                ->send();
+        }
+    }
+
     private function normalizeOther(array $kv): array
     {
         $out = [];
@@ -330,6 +474,73 @@ class ReportsPage extends Page
             $out[] = ['name' => $name, 'amount_hkd' => (float) $amount];
         }
         return $out;
+    }
+
+    /**
+     * 上一年
+     */
+    public function previousYear(ReportService $service): void
+    {
+        $year = (int) data_get($this->yearly, 'year');
+        $year--;
+        
+        $this->yearly['year'] = $year;
+        $this->yearlyData = $service->getYearlyReportData($year);
+    }
+
+    /**
+     * 下一年
+     */
+    public function nextYear(ReportService $service): void
+    {
+        $year = (int) data_get($this->yearly, 'year');
+        $year++;
+        
+        $this->yearly['year'] = $year;
+        $this->yearlyData = $service->getYearlyReportData($year);
+    }
+
+    /**
+     * 更新季度分红
+     */
+    public function updateDividend(int $year, int $month, float $amount): void
+    {
+        try {
+            $service = app(ReportService::class);
+            $result = $service->updateQuarterlyDividend($year, $month, $amount);
+            
+            if ($result['success']) {
+                // 更新成功，重新加载年度数据
+                $this->yearlyData = $service->getYearlyReportData($year);
+                
+                Notification::make()
+                    ->title('季度分红更新成功')
+                    ->body($result['message'])
+                    ->success()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('季度分红更新失败')
+                    ->body($result['message'] ?? '更新失败')
+                    ->danger()
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in updateDividend', [
+                'year' => $year,
+                'month' => $month,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id()
+            ]);
+            
+            Notification::make()
+                ->title('系统错误')
+                ->body('更新季度分红时发生系统错误')
+                ->danger()
+                ->send();
+        }
     }
 }
 
