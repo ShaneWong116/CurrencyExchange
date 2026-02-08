@@ -46,7 +46,7 @@ class TransactionSummary extends BaseWidget
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            Stat::make('收入-港币', 'HK$' . number_format($incomeHkd, 2))
+            Stat::make('收入-港币', 'HK$' . number_format($outcomeHkd, 2))
                 ->description('港币合计')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
@@ -56,7 +56,7 @@ class TransactionSummary extends BaseWidget
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('danger'),
 
-            Stat::make('支出-港币', 'HK$' . number_format($outcomeHkd, 2))
+            Stat::make('支出-港币', 'HK$' . number_format($incomeHkd, 2))
                 ->description('港币合计')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('danger'),

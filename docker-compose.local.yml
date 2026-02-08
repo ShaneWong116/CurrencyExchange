@@ -20,6 +20,7 @@ services:
       - DB_CONNECTION=sqlite
       - QUEUE_CONNECTION=database
     volumes:
+      - ./backend/app:/var/www/html/app
       - ./backend/database/database.sqlite:/var/www/html/database/database.sqlite
       - ./backend/.env:/var/www/html/.env
     networks:
@@ -58,6 +59,7 @@ services:
       - DB_CONNECTION=sqlite
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     volumes:
+      - ./backend/app:/var/www/html/app
       - ./backend/database/database.sqlite:/var/www/html/database/database.sqlite
       - ./backend/.env:/var/www/html/.env
     networks:
@@ -86,6 +88,7 @@ services:
         sleep 60
       done"
     volumes:
+      - ./backend/app:/var/www/html/app
       - ./backend/database/database.sqlite:/var/www/html/database/database.sqlite
       - ./backend/.env:/var/www/html/.env
     networks:
