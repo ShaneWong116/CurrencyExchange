@@ -157,7 +157,7 @@ const themeClasses = computed(() => ({
 }))
 
 const cssVariables = computed(() => {
-  const themeVars = themeCssVariables.value as Record<string, string> | undefined
+  const themeVars = (themeCssVariables as any)?.value as Record<string, string> | undefined
   return {
     ...(themeVars || {}),
     '--notes-ui-font-size': isMobile.value 
