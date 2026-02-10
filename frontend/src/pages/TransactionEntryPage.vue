@@ -75,7 +75,13 @@
               <q-select v-model="form.channelId" :options="channelOptions" label="支付渠道" emit-value map-options :rules="[val => !!val || '请选择支付渠道']" />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model="form.remarks" label="备注" type="textarea" />
+              <!-- 优化后的常用备注UI -->
+              <CommonNotesUI 
+                :initial-expanded="false"
+                header-title="常用备注"
+                @note-select="handleNoteSelect"
+              />
+              <q-input v-model="form.remarks" label="备注" type="textarea" class="q-mt-md" />
             </div>
           </div>
         </q-card-section>
@@ -153,6 +159,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Dialog, Notify } from 'quasar'
 import { v4 as uuidv4 } from 'uuid'
 import { api } from '@/utils/api'
+import CommonNotesUI from '@/components/CommonNotesUI.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -278,6 +285,11 @@ watch(instantRateDisplay, (newVal) => {
 watch(() => [form.value.rmbAmount, form.value.hkdAmount], () => {
   autoCalcRate()
 })
+
+// 处理备注选择
+const handleNoteSelect = (note) => {
+  form.value.remarks = note.content
+}
 
 const toBackendPayload = () => {
   // 统一转换为后端字段

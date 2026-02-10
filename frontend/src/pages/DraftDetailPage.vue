@@ -112,12 +112,19 @@
         />
 
         <!-- 备注 -->
+        <!-- 优化后的常用备注UI -->
+        <CommonNotesUI 
+          :initial-expanded="false"
+          header-title="常用备注"
+          @note-select="handleNoteSelect"
+        />
         <q-input
           v-model="draft.notes"
           label="备注"
           type="textarea"
           outlined
           rows="3"
+          class="q-mt-md"
         >
           <template v-slot:prepend>
             <q-icon name="note" />
@@ -174,6 +181,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDraftStore } from '@/stores/draft'
 import { useTransactionStore } from '@/stores/transaction'
 import { Dialog, Notify } from 'quasar'
+import CommonNotesUI from '@/components/CommonNotesUI.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -217,6 +225,13 @@ const formatTime = (timeString) => {
   if (!timeString) return ''
   const date = new Date(timeString)
   return date.toLocaleString('zh-CN')
+}
+
+// 处理备注选择
+const handleNoteSelect = (note) => {
+  if (draft.value) {
+    draft.value.notes = note.content
+  }
 }
 
 // 保存草稿

@@ -1,0 +1,256 @@
+/**
+ * 常用备注UI优化 - CSS变量系统
+ * 
+ * 定义了响应式设计的CSS变量和主题配置
+ * 支持亮色/暗色主题切换和移动优先的响应式设计
+ */
+
+:root {
+  /* ===== 响应式断点 ===== */
+  --breakpoint-mobile: 320px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+
+  /* ===== 字体大小系统 ===== */
+  /* 基础字体 - 移动端优先 */
+  --font-size-base: 16px;
+  --font-size-title: 18px;
+  --font-size-caption: 14px;
+  
+  /* 桌面端字体 */
+  --font-size-base-desktop: 14px;
+  --font-size-title-desktop: 16px;
+  --font-size-caption-desktop: 12px;
+
+  /* 字体权重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+
+  /* 行高 */
+  --line-height-base: 1.5;
+  --line-height-title: 1.4;
+  --line-height-caption: 1.3;
+
+  /* ===== 间距系统 ===== */
+  /* 基础间距单位 */
+  --spacing-unit: 12px;
+  --spacing-unit-desktop: 12px;
+  
+  /* 组件间距 */
+  --spacing-component: var(--spacing-unit);
+  --spacing-component-desktop: var(--spacing-unit-desktop);
+  
+  /* 内容内边距 */
+  --spacing-content-padding: 12px;
+  
+  /* 列表项间距 */
+  --spacing-list-item: 8px;
+  
+  /* 按钮内边距 */
+  --spacing-button-padding: 8px 16px;
+  
+  /* 小间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  --spacing-md: 12px;
+  --spacing-lg: 18px;
+  --spacing-xl: 24px;
+
+  /* ===== 触控目标配置 ===== */
+  --touch-target-min-size: 80px;
+  --touch-target-padding: 12px;
+  --touch-target-margin: 8px;
+
+  /* ===== 长备注配置 ===== */
+  --long-note-preview-length-mobile: 100;
+  --long-note-preview-length-desktop: 150;
+  --long-note-animation-duration: 300ms;
+  --long-note-animation-easing: ease-in-out;
+  --long-note-max-height: 120px;
+
+  /* ===== 颜色系统 - 亮色主题 ===== */
+  --color-primary: #007AFF;
+  --color-primary-light: #4DA3FF;
+  --color-primary-dark: #0056CC;
+  
+  --color-secondary: #5856D6;
+  --color-secondary-light: #7B7AE8;
+  --color-secondary-dark: #3F3EB3;
+  
+  --color-background: #FFFFFF;
+  --color-surface: #F8F9FA;
+  --color-surface-elevated: #FFFFFF;
+  
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #999999;
+  --color-text-disabled: #CCCCCC;
+  
+  --color-border: #E5E5E5;
+  --color-border-light: #F0F0F0;
+  --color-border-dark: #D0D0D0;
+  
+  --color-accent: #FF6B35;
+  --color-success: #28A745;
+  --color-warning: #FFC107;
+  --color-error: #DC3545;
+  --color-info: #17A2B8;
+
+  /* ===== 边框和圆角 ===== */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-round: 50%;
+  
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 3px;
+
+  /* ===== 阴影系统 ===== */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+
+  /* ===== 过渡动画 ===== */
+  --transition-duration-fast: 150ms;
+  --transition-duration-normal: 300ms;
+  --transition-duration-slow: 500ms;
+  
+  --transition-easing-ease: ease;
+  --transition-easing-ease-in: ease-in;
+  --transition-easing-ease-out: ease-out;
+  --transition-easing-ease-in-out: ease-in-out;
+  
+  /* 常用过渡组合 */
+  --transition-all: all var(--transition-duration-normal) var(--transition-easing-ease-in-out);
+  --transition-transform: transform var(--transition-duration-normal) var(--transition-easing-ease-in-out);
+  --transition-opacity: opacity var(--transition-duration-fast) var(--transition-easing-ease-in-out);
+
+  /* ===== Z-index 层级 ===== */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+
+  /* ===== 组件特定变量 ===== */
+  /* 备注容器 */
+  --notes-container-background: var(--color-surface);
+  --notes-container-border: var(--border-width-thin) solid var(--color-border);
+  --notes-container-border-radius: var(--border-radius-md);
+  --notes-container-padding: var(--spacing-content-padding);
+  
+  /* 备注项 */
+  --note-item-background: var(--color-background);
+  --note-item-background-hover: var(--color-surface);
+  --note-item-background-selected: var(--color-primary-light);
+  --note-item-border-radius: var(--border-radius-sm);
+  --note-item-padding: var(--spacing-sm) var(--spacing-md);
+  --note-item-margin: var(--spacing-xs);
+  
+  /* 按钮样式 */
+  --button-primary-background: var(--color-primary);
+  --button-primary-background-hover: var(--color-primary-dark);
+  --button-primary-text: #FFFFFF;
+  --button-secondary-background: transparent;
+  --button-secondary-border: var(--border-width-thin) solid var(--color-border);
+  --button-secondary-text: var(--color-text-primary);
+  
+  /* 输入框样式 */
+  --input-background: var(--color-background);
+  --input-border: var(--border-width-thin) solid var(--color-border);
+  --input-border-focus: var(--border-width-medium) solid var(--color-primary);
+  --input-border-radius: var(--border-radius-sm);
+  --input-padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* ===== 暗色主题 ===== */
+[data-theme="dark"] {
+  --color-background: #1A1A1A;
+  --color-surface: #2D2D2D;
+  --color-surface-elevated: #3A3A3A;
+  
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #CCCCCC;
+  --color-text-tertiary: #999999;
+  --color-text-disabled: #666666;
+  
+  --color-border: #404040;
+  --color-border-light: #333333;
+  --color-border-dark: #555555;
+  
+  --notes-container-background: var(--color-surface);
+  --note-item-background: var(--color-surface-elevated);
+  --note-item-background-hover: #404040;
+  
+  --input-background: var(--color-surface);
+  
+  /* 调整阴影为暗色主题 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== 响应式媒体查询 ===== */
+/* 平板端适配 */
+@media (min-width: 768px) {
+  :root {
+    --spacing-component: var(--spacing-unit-desktop);
+    --font-size-base: var(--font-size-base-desktop);
+    --font-size-title: var(--font-size-title-desktop);
+    --font-size-caption: var(--font-size-caption-desktop);
+  }
+}
+
+/* 桌面端适配 */
+@media (min-width: 1024px) {
+  :root {
+    --spacing-component: var(--spacing-unit-desktop);
+    --notes-container-padding: var(--spacing-md);
+    --long-note-max-height: 150px;
+  }
+}
+
+/* ===== 高对比度模式支持 ===== */
+@media (prefers-contrast: high) {
+  :root {
+    --color-border: #000000;
+    --color-text-primary: #000000;
+    --color-background: #FFFFFF;
+  }
+  
+  [data-theme="dark"] {
+    --color-border: #FFFFFF;
+    --color-text-primary: #FFFFFF;
+    --color-background: #000000;
+  }
+}
+
+/* ===== 减少动画偏好支持 ===== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration-fast: 0ms;
+    --transition-duration-normal: 0ms;
+    --transition-duration-slow: 0ms;
+    --long-note-animation-duration: 0ms;
+  }
+}
+
+/* ===== 打印样式 ===== */
+@media print {
+  :root {
+    --color-background: #FFFFFF;
+    --color-text-primary: #000000;
+    --color-border: #000000;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+  }
+}

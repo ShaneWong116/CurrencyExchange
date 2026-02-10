@@ -453,6 +453,12 @@
             />
 
             <!-- 备注 -->
+            <!-- 优化后的常用备注UI -->
+            <CommonNotesUI 
+              :initial-expanded="false"
+              header-title="常用备注"
+              @note-select="handleNoteSelect"
+            />
             <q-input
               v-model="editForm.notes"
               type="textarea"
@@ -460,6 +466,7 @@
               outlined
               dense
               rows="2"
+              class="q-mt-md"
             />
 
             <!-- 关联图片 -->
@@ -510,13 +517,14 @@
 
 <script>
 import BottomNavigation from '@/components/BottomNavigation.vue'
+import CommonNotesUI from '@/components/CommonNotesUI.vue'
 import { api } from '@/utils/api'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime, formatShortDateTime } from '@/utils/dateFormat'
 
 export default {
   name: 'RecordsPage',
-  components: { BottomNavigation },
+  components: { BottomNavigation, CommonNotesUI },
   data() {
     return {
       userName: '',
@@ -599,6 +607,10 @@ export default {
       }
       const key = this.filterType === 'instant_buyout' ? 'instant' : this.filterType
       return this.stats[key]?.count || 0
+    },
+    // 处理备注选择
+    handleNoteSelect(note) {
+      this.editForm.notes = note.content
     },
     async fetchBalanceOverview() {
       try {

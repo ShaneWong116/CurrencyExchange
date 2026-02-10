@@ -8,6 +8,7 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
+use App\Filament\Forms\Components\CommonNotesField;
 
 class ListSettlements extends ListRecords
 {
@@ -156,6 +157,10 @@ class ListSettlements extends ListRecords
                                             ->columnSpanFull()
                                             ->live(),
                                     ]),
+                                
+                                CommonNotesField::make('notes')
+                                    ->label('')
+                                    ->columnSpanFull(),
                                 
                                 \Filament\Forms\Components\Textarea::make('notes')
                                     ->label('备注')

@@ -354,15 +354,26 @@
         <!-- 备注 -->
         <q-card class="q-mb-md">
           <q-card-section>
+            <div class="text-subtitle2 q-mb-md">备注（可选）</div>
+            
+            <!-- 备注输入框 -->
             <q-input
               v-model="notes"
-              label="备注（可选）"
               type="textarea"
+              label="备注内容"
               outlined
-              rows="3"
-              maxlength="1000"
+              :rows="3"
+              maxlength="500"
               counter
+              placeholder="请输入备注内容，或从下方常用备注中选择"
             />
+            
+            <!-- 常用备注选择器 -->
+            <div class="q-mt-md">
+              <CommonNotesSelector 
+                v-model="notes"
+              />
+            </div>
           </q-card-section>
         </q-card>
 
@@ -497,6 +508,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import api from '@/utils/api'
+import CommonNotesSelector from '@/components/CommonNotesSelector.vue'
 
 const router = useRouter()
 const $q = useQuasar()

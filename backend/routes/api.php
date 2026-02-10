@@ -30,8 +30,8 @@ Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'lo
 // 使用 /images/public/{uuid} 路径避免与认证路由冲突
 Route::get('/images/public/{uuid}', [\App\Http\Controllers\Api\ImageController::class, 'showPublic'])->name('api.images.show.public');
 
-// 需要认证的路由
-Route::middleware('auth:sanctum')->group(function () {
+// 需要认证的路由 - 支持sanctum和web认证
+Route::middleware('auth:sanctum,web')->group(function () {
     // 认证相关
     Route::post('/auth/refresh', [\App\Http\Controllers\Api\AuthController::class, 'refresh']);
     Route::post('/auth/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
@@ -83,6 +83,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/images/batch', [\App\Http\Controllers\Api\ImageController::class, 'batchUpload'])
         ->middleware('throttle:5,1') // 批量图片上传限流：每分钟5次
         ->name('api.images.batch');
+    
+    // 常用备注管理 - 支持web和sanctum认证
+    Route::get('/common-notes', [\App\Http\Controllers\Api\CommonNoteController::class, 'index']);
+    Route::post('/common-notes', [\App\Http\Controllers\Api\CommonNoteController::class, 'store']);
+    Route::delete('/common-notes/{id}', [\App\Http\Controllers\Api\CommonNoteController::class, 'destroy']);
     
     // 后台管理路由 - 需要管理员权限
     Route::prefix('admin')->middleware('admin')->group(function () {
