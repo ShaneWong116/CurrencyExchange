@@ -20,6 +20,12 @@ class SystemSettings extends Page
 
     public ?array $data = [];
 
+    // 只有 admin 能访问系统设置
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->isAdmin() ?? false;
+    }
+
     public function mount(): void
     {
         $this->form->fill([
