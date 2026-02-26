@@ -19,7 +19,7 @@ cd backend
 
 REM 创建使用国内镜像源的Dockerfile
 (
-echo FROM registry.cn-hangzhou.aliyuncs.com/library/php:8.3-fpm-alpine
+echo FROM php:8.3-fpm-alpine
 echo.
 echo # 设置工作目录
 echo WORKDIR /var/www/html
@@ -130,7 +130,7 @@ echo.
 
 echo [步骤 5] 创建 Nginx Dockerfile...
 (
-echo FROM registry.cn-hangzhou.aliyuncs.com/library/nginx:alpine
+echo FROM nginx:alpine
 echo.
 echo RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
 echo     ^&^& apk add --no-cache wget

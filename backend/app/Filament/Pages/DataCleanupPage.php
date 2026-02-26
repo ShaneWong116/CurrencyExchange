@@ -189,6 +189,18 @@ class DataCleanupPage extends Page
         
         $deleted = $service->cleanup($cleanupPayload, auth()->user()->name ?? 'system');
 
+        // 记录审计日志（敏感操作）
+        \App\Models\AuditLog::logAction(
+            'data.cleanup',
+            null,
+            null,
+            [
+                'content_types' => $contentTypes,
+                'deleted_counts' => $deleted,
+                'operator' => auth()->user()->username ?? 'system',
+            ]
+        );
+
         // 格式化删除结果显示
         $resultText = $this->formatDeletedResult($deleted);
         

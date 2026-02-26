@@ -45,6 +45,7 @@ class FilamentServiceProvider extends PanelProvider
                 \App\Filament\Resources\ImageResource::class,
                 \App\Filament\Resources\FieldUserResource::class,
                 \App\Filament\Resources\LocationResource::class,
+                \App\Filament\Resources\UserResource::class,
                 // \App\Filament\Resources\SettingResource::class, // 已隐藏,使用 SystemSettings 页面代替
             ])
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

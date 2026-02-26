@@ -5,6 +5,8 @@ namespace App\Filament\Pages\Auth;
 use Filament\Pages\Auth\Login as BaseLogin;
 use Filament\Forms;
 use Filament\Forms\Components\Component;
+use Illuminate\Validation\ValidationException;
+use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 
 class Login extends BaseLogin
 {
@@ -38,6 +40,42 @@ class Login extends BaseLogin
             'password' => $data['password'] ?? null,
         ];
     }
-}
 
+    /**
+     * 重写认证方法，添加登录时间记录
+     */
+    public function authenticate(): ?\Filament\Http\Responses\Auth\Contracts\LoginResponse
+    {
+        try {
+            $this->rateLimit(5);
+        } catch (TooManyRequestsException $exception) {
+            throw ValidationException::withMessages([
+                'email' => __('filament-panels::pages/auth/login.messages.throttled', [
+                    'seconds' => $exception->secondsUntilAvailable,
+                    'minutes' => ceil($exception->secondsUntilAvailable / 60),
+                ]),
+            ]);
+        }
+
+        $data = $this->form->getState();
+
+        if (! \Filament\Facades\Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
+            throw ValidationException::withMessages([
+                'email' => __('filament-panels::pages/auth/login.messages.failed'),
+            ]);
+        }
+
+        // 更新最后登录时间
+        $user = \Filament\Facades\Filament::auth()->user();
+        if ($user) {
+            $user->update([
+                'last_login_at' => now(),
+            ]);
+        }
+
+        session()->regenerate();
+
+        return app(\Filament\Http\Responses\Auth\Contracts\LoginResponse::class);
+    }
+}
 
